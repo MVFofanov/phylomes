@@ -1,0 +1,378 @@
+---
+title: "Untitled"
+author: "Mikhail Fofanov"
+date: "2023-07-14"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+install.packages("ggupset")
+```
+```{r}
+install.packages("UpSetR")
+```
+```{r}
+install.packages('ComplexUpset')
+```
+```{r}
+install.packages('ggbeeswarm')
+```
+
+
+
+```{r warning=TRUE}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(ggupset)
+library(UpSetR)
+library(ComplexUpset)
+```
+
+
+```{r}
+file_name = 'C:\\crassvirales\\phylomes\\protein_clusters\\clusters_statistics.txt'
+clusters_statistics <- read.csv(file_name, sep = '\t')
+summary(clusters_statistics)
+```
+```{r}
+# Assuming clusters_statistics is a data frame
+clusters_statistics <- clusters_statistics %>%
+  group_by(cluster_members_mean_length, cluster_members_number) %>%
+  summarise(count = n(), .groups = 'drop') %>%
+  ungroup()
+summary(clusters_statistics)
+```
+
+
+```{r}
+plot_name = 'C:\\crassvirales\\phylomes\\protein_clusters\\clusters_statistics_plot.png'
+
+p <- ggplot(clusters_statistics, aes(x = cluster_members_mean_length,
+                                     y = cluster_members_number)) + #,
+                                     #size = count)) +
+  theme_bw() +
+  geom_point() +
+  scale_x_continuous(name = "Average length of phylome proteins (aa)", breaks = seq(0, 5500, 500)) +
+  scale_y_continuous(name = "Number of proteins in the cluster", breaks = seq(0, 3000, 500)) +
+  ggtitle("Phylome protein clusters, scatter plot") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+ggsave(plot_name, plot = p, device = "png", dpi = 600)
+p
+```
+
+```{r}
+p <- ggplot(clusters_statistics, aes(x=cluster_members_mean_length)) +
+  theme_bw() +
+  geom_histogram()
+  #scale_x_continuous(name="Cluster members mean length (bp)", breaks <- seq(0, 6500, 1000)) +
+  #scale_y_continuous(name="Cluster members number", breaks <- seq(0, 250, 20)) +
+  #ggtitle("Crassvirales (from ncbi) protein clusters statistics") +
+  #theme(plot.title = element_text(hjust = 0.5))
+p
+```
+
+
+# Phylome summary analysis
+
+```{r}
+phylome_summary_file = 'C:\\crassvirales\\Bas_phages_large\\Bas_phages\\5_nr_screening\\4_merged_ncbi_crassvirales\\2_trees_leaves\\phylome_summary\\phylome_summary.tsv'
+phylome_summary <- read.csv(phylome_summary_file, sep = '\t')
+summary(phylome_summary)
+```
+```{r}
+plot_name = 'C:\\crassvirales\\Bas_phages_large\\Bas_phages\\5_nr_screening\\4_merged_ncbi_crassvirales\\2_trees_leaves\\phylome_summary\\phylome_summary_crassvirales_ncbi_members_plot.png'
+
+p <- ggplot(phylome_summary, aes(x = count_crassvirales,
+                                     y = count_ncbi)) + #,
+                                     #size = count)) +
+  theme_bw() +
+  geom_point() +
+  scale_x_continuous(name = "Number of Crassvirales proteins in a cluster", breaks = seq(0, 2000, 200)) +
+  scale_y_continuous(name = "Number of NCBI proteins in a cluster", breaks = seq(0, 3000, 200)) +
+  ggtitle("Phylome protein clusters, scatter plot") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+ggsave(plot_name, plot = p, device = "png", dpi = 600)
+p
+```
+
+```{r}
+movies = tidy_movies
+```
+
+
+# Phylome summary with taxonomy
+
+```{r}
+phylome_summary_taxonomy_file = 'C:\\crassvirales\\Bas_phages_large\\Bas_phages\\5_nr_screening\\4_merged_ncbi_crassvirales\\2_trees_leaves\\phylome_summary\\phylome_summary_with_taxonomy.tsv'
+phylome_summary_taxonomy <- read.csv(phylome_summary_taxonomy_file, sep = '\t')
+
+phylome_summary_taxonomy_original <- phylome_summary_taxonomy
+
+phylome_summary_taxonomy$taxonomy_uniq <- str_split(phylome_summary_taxonomy$taxonomy_uniq, ", ")
+
+
+summary(phylome_summary_taxonomy)
+```
+```{r}
+plot_name = 'C:\\crassvirales\\Bas_phages_large\\Bas_phages\\5_nr_screening\\4_merged_ncbi_crassvirales\\2_trees_leaves\\phylome_summary\\phylome_summary_upset_plot.png'
+
+p <- phylome_summary_taxonomy %>%
+#  distinct(title, year, length, .keep_all=TRUE) %>%
+  ggplot(aes(x=taxonomy_uniq)) +
+    geom_bar() +
+    scale_x_upset(n_intersections = 50)
+
+ggsave(plot_name, plot = p, device = "png", dpi = 600)
+p
+```
+```{r}
+# Assuming you have a data frame named 'phylome_summary_taxonomy'
+# with a column 'taxonomy_info' representing sets
+
+# Unnest the 'taxonomy_info' column
+phylome_summary_taxonomy_unnested <- phylome_summary_taxonomy %>%
+  unnest(taxonomy_info)
+
+# Calculate set sizes for each unique value in 'taxonomy_info'
+set_sizes <- phylome_summary_taxonomy_unnested %>%
+  count(taxonomy_info)
+
+# Create ggupset plot
+p <- ggplot() +
+  geom_bar(aes(x = taxonomy_uniq), data = phylome_summary_taxonomy, fill = "lightblue") +
+  geom_bar(aes(x = taxonomy_info, y = n), data = set_sizes, fill = "lightgreen") +
+  scale_x_upset(n_intersections = 50) +
+  theme_minimal()
+p
+```
+```{r}
+# Assuming you have a data frame named 'phylome_summary_taxonomy'
+# with a column 'taxonomy_info' representing sets
+
+# Unnest the 'taxonomy_info' column
+phylome_summary_taxonomy_unnested <- phylome_summary_taxonomy %>%
+  unnest(taxonomy_info)
+
+# Create ggplot with bars for set sizes
+p <- ggplot(phylome_summary_taxonomy_unnested, aes(x = taxonomy_uniq)) +
+  theme_minimal()
+p
+```
+
+
+
+## Using UpSetR
+
+```{r}
+p <- phylome_summary_taxonomy %>%
+  distinct(cluster_name, protein_id_crassvirales, count_crassvirales, .keep_all = TRUE) %>%
+  unnest(cols = taxonomy_uniq) %>%
+  mutate(TaxonomyMember = 1) %>%
+  pivot_wider(names_from = taxonomy_uniq, values_from = TaxonomyMember,
+              values_fill = list(TaxonomyMember = 0),
+              names_glue = "{.value}_{.name}") %>%
+  as.data.frame() %>%
+  UpSetR::upset(sets = c("outgroup", "Crevaviridae", "Epsilon", "Intestiviridae",
+                         "Suoliviridae", "Steigviridae", "Zeta", "unknown"), keep.order = TRUE)
+p
+
+```
+```{r}
+phylome_summary_taxonomy_only_proteins <- phylome_summary_taxonomy_original %>% select(1,13:20)
+
+p <- phylome_summary_taxonomy_only_proteins %>%
+#  distinct(cluster_name, protein_id_crassvirales, count_crassvirales, .keep_all = TRUE) %>%
+  unnest(cols = taxonomy_uniq) %>%
+  mutate(TaxonomyMember = 1) %>%
+  pivot_wider(names_from = taxonomy_uniq, values_from = TaxonomyMember,
+              values_fill = list(TaxonomyMember = 0),
+              names_glue = "{.value}_{.name}") %>%
+  as.data.frame() %>%
+  UpSetR::upset(sets = c("outgroup", "Crevaviridae", "Epsilon", "Intestiviridae",
+                         "Suoliviridae", "Steigviridae", "Zeta", "unknown"), keep.order = TRUE)
+p
+
+```
+
+
+```{r}
+upset(phylome_summary_taxonomy_only_proteins, nsets = 8, point.size = 3.5, line.size = 2, 
+    mainbar.y.label = "Taxonomy Intersections", sets.x.label = "Protein clusters Per Crassvirales Family", 
+    text.scale = c(1.3, 1.3, 1, 1, 2, 1))
+
+```
+```{r}
+upset(phylome_summary_taxonomy_original, sets = c("outgroup", "Crevaviridae", "Epsilon", "Intestiviridae", "Suoliviridae", "Steigviridae", "Zeta", "unknown"),
+      mb.ratio = c(0.55, 0.45), order.by = "freq")
+```
+```{r}
+upset(phylome_summary_taxonomy_original)
+```
+
+
+
+```{r}
+movies <- read.csv(system.file("extdata", "movies.csv", package = "UpSetR"), 
+    header = T, sep = ";")
+```
+
+```{r}
+if(!require(ggplot2movies)) install.packages('ggplot2movies')
+movies = ggplot2movies::movies
+genres = c('Action', 'Animation', 'Comedy', 'Drama', 'Documentary', 'Romance')
+
+upset(
+    movies,
+    genres,
+    annotations = list(
+        'Length'=ggplot(mapping=aes(x=intersection, y=length)) + geom_boxplot(),
+        'Rating'=ggplot(mapping=aes(x=intersection, y=rating))
+            # if you do not want to install ggbeeswarm, you can use geom_jitter
+            + ggbeeswarm::geom_quasirandom(aes(color=log10(votes)))
+            + geom_violin(width=1.1, alpha=0.5)
+    ),
+    queries=list(
+        upset_query(
+            intersect=c('Drama', 'Comedy'),
+            color='red',
+            fill='red',
+            only_components=c('intersections_matrix', 'Intersection size')
+        ),
+        upset_query(
+            set='Drama',
+            fill='blue'
+        ),
+        upset_query(
+            intersect=c('Romance', 'Drama'),
+            fill='yellow',
+            only_components=c('Length')
+        )
+    ),
+    min_size=10,
+    width_ratio=0.1
+)
+```
+
+```{r}
+plot_name = 'C:\\crassvirales\\Bas_phages_large\\Bas_phages\\5_nr_screening\\4_merged_ncbi_crassvirales\\2_trees_leaves\\phylome_summary\\phylome_summary_upset_plot_simple.png'
+
+families = c("outgroup", "Crevaviridae", "Epsilon", "Intestiviridae",
+             "Suoliviridae", "Steigviridae", "Zeta", "unknown")
+
+p <- upset(
+    # phylome_summary_taxonomy_only_proteins,
+    phylome_summary_taxonomy_original,
+    families,
+    base_annotations=list(
+        'Intersection size'=intersection_size(),
+        # using shorthand:
+        'Intersection ratio'=intersection_ratio(text_mapping=aes(label=!!upset_text_percentage()))
+    ),
+    min_size=5,
+#    n_intersections=30,
+    width_ratio=0.4,
+    wrap=TRUE,
+    set_sizes=(
+        upset_set_size()
+        + ylab('Number of protein clusters containing representatives of different Crassvirales families.')
+        + theme(axis.ticks.x=element_line()) +
+          geom_text(aes(label=..count..), hjust=1.1, stat='count')
+    )
+    ) +
+  ggtitle('Members of different Crassvirales families in different protein clusters.')
+ggsave(plot_name, plot = p, width = 25, height = 10, device = "png", dpi = 600)
+p
+```
+
+```{r}
+plot_name = 'C:\\crassvirales\\Bas_phages_large\\Bas_phages\\5_nr_screening\\4_merged_ncbi_crassvirales\\2_trees_leaves\\phylome_summary\\phylome_summary_upset_plot.png'
+
+families = c("outgroup", "Crevaviridae", "Epsilon", "Intestiviridae",
+             "Suoliviridae", "Steigviridae", "Zeta", "unknown")
+
+p <- upset(
+    # phylome_summary_taxonomy_only_proteins,
+    phylome_summary_taxonomy,
+    families,
+    base_annotations=list(
+        'Intersection size'=intersection_size(),
+        # using shorthand:
+        'Intersection ratio'=intersection_ratio(text_mapping=aes(label=!!upset_text_percentage()))
+    ),
+    annotations = list(
+       'Number of total members'=upset_annotate('total_members', geom_boxplot(na.rm=TRUE)),
+       'Number of Crassvirales members'=upset_annotate('count_crassvirales', geom_boxplot(na.rm=TRUE))
+        ),
+#      'Number of NCBI members'=upset_annotate('count_ncbi', geom_boxplot(na.rm=TRUE)),
+#      'The ratio of Crassvirales/NCBI members.'=upset_annotate('crassvirales_ncbi_ratio', geom_boxplot(na.rm=TRUE))
+#    ),
+    min_size=5,
+#    n_intersections=30,
+    width_ratio=0.4,
+    wrap=TRUE,
+    set_sizes=(
+        upset_set_size()
+        + ylab('Number of protein clusters containing representatives of different Crassvirales families.')
+        + theme(axis.ticks.x=element_line()) +
+          geom_text(aes(label=..count..), hjust=1.1, stat='count')
+    )
+    ) +
+  ggtitle('Members of different Crassvirales families in different protein clusters.')
+ggsave(plot_name, plot = p, width = 25, height = 15, device = "png", dpi = 600)
+p
+```
+```{r}
+phylome_ncbi_genomes_sizes_file = 'C:\\crassvirales\\Bas_phages_large\\Bas_phages\\5_nr_screening\\4_merged_ncbi_crassvirales\\2_trees_leaves\\all_ncbi_genomes_sizes_uniq.txt'
+
+phylome_ncbi_genomes_sizes <- read.csv(phylome_ncbi_genomes_sizes_file, sep = '\t', header = FALSE, col.names = c('name', 'length'))
+
+summary(phylome_ncbi_genomes_sizes)
+```
+
+
+```{r}
+# Create a histogram using ggplot2
+ggplot(phylome_ncbi_genomes_sizes, aes(x = length)) +
+  geom_histogram(binwidth = 500, fill = "skyblue", color = "black", alpha = 0.7) +
+  labs(title = "Histogram of Genome Lengths", x = "Length") +
+  theme_minimal()
+```
+```{r}
+# Create a histogram using ggplot2 with log scale
+ggplot(phylome_ncbi_genomes_sizes, aes(x = length)) +
+  geom_histogram(binwidth = 0.1, fill = "skyblue", color = "black", alpha = 0.7) +
+  labs(title = "Histogram of Genome Lengths (log scale)", x = "Log(Length)") +
+  scale_x_log10() +
+  theme_minimal()
+```
+```{r}
+# Create a boxplot
+ggplot(phylome_ncbi_genomes_sizes, aes(y = length)) +
+  geom_boxplot(fill = "lightblue", color = "black", alpha = 0.7) +
+  labs(title = "Boxplot of Genome Lengths", y = "Genome Length") +
+  scale_y_log10() +
+  theme_minimal()
+```
+
+```{r}
+# Create a violin plot
+ggplot(phylome_ncbi_genomes_sizes, aes(x = 1, y = length)) +
+  geom_violin(fill = "lightblue", color = "black", alpha = 0.7) +
+  labs(title = "Violin Plot of Genome Lengths", y = "Genome Length") +
+  scale_y_log10() +
+  theme_minimal()
+```
+

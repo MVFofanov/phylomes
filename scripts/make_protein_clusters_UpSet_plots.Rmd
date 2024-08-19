@@ -1,0 +1,336 @@
+---
+title: "Untitled"
+author: "Mikhail Fofanov"
+date: "2024-01-25"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+```{r warning=TRUE}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(ComplexUpset)
+library(forcats)
+```
+
+```{r}
+library(forcats)
+```
+
+
+```{r}
+phylome_summary_taxonomy_file = 'C:\\crassvirales\\Bas_phages_large\\Bas_phages\\5_nr_screening\\4_merged_ncbi_crassvirales\\2_trees_leaves\\phylome_summary\\phylome_summary_with_taxonomy.tsv'
+phylome_summary_taxonomy <- read.csv(phylome_summary_taxonomy_file, sep = '\t')
+summary(phylome_summary_taxonomy)
+```
+
+
+
+```{r}
+plot_name = 'C:\\crassvirales\\Bas_phages_large\\Bas_phages\\5_nr_screening\\4_merged_ncbi_crassvirales\\2_trees_leaves\\phylome_summary\\phylome_summary_upset_plot_simple.png'
+
+families = c("outgroup", "Crevaviridae", "Epsilon", "Intestiviridae",
+             "Suoliviridae", "Steigviridae", "Zeta", "unknown")
+
+p <- upset(
+    # phylome_summary_taxonomy_only_proteins,
+    phylome_summary_taxonomy,
+    families,
+    base_annotations=list(
+        'Intersection size'=intersection_size(),
+        # using shorthand:
+        'Intersection ratio'=intersection_ratio(text_mapping=aes(label=!!upset_text_percentage()))
+    ),
+    min_size=5,
+#    n_intersections=30,
+    width_ratio=0.4,
+    wrap=TRUE,
+    set_sizes=(
+        upset_set_size()
+        + ylab('Number of protein clusters containing representatives of different Crassvirales families.')
+        + theme(axis.ticks.x=element_line()) +
+          geom_text(aes(label=..count..), hjust=1.1, stat='count')
+    )
+    ) +
+  ggtitle('Members of different Crassvirales families in different protein clusters.')
+ggsave(plot_name, plot = p, width = 25, height = 10, device = "png", dpi = 600)
+p
+```
+
+
+
+```{r}
+plot_name = 'C:\\crassvirales\\Bas_phages_large\\Bas_phages\\5_nr_screening\\4_merged_ncbi_crassvirales\\2_trees_leaves\\phylome_summary\\phylome_summary_upset_plot.png'
+
+families = c("outgroup", "Crevaviridae", "Epsilon", "Intestiviridae",
+             "Suoliviridae", "Steigviridae", "Zeta", "unknown")
+
+p <- upset(
+    # phylome_summary_taxonomy_only_proteins,
+    phylome_summary_taxonomy,
+    families,
+    base_annotations=list(
+        'Intersection size'=intersection_size(),
+        # using shorthand:
+        'Intersection ratio'=intersection_ratio(text_mapping=aes(label=!!upset_text_percentage()))
+    ),
+    annotations = list(
+       'Number of total members'=upset_annotate('total_members', geom_boxplot(na.rm=TRUE)),
+       'Number of Crassvirales members'=upset_annotate('count_crassvirales', geom_boxplot(na.rm=TRUE)),
+       'The ratio of Crassvirales / total'=upset_annotate('crassvirales_total_ratio', geom_boxplot(na.rm=TRUE))
+        ),
+#      'Number of NCBI members'=upset_annotate('count_ncbi', geom_boxplot(na.rm=TRUE)),
+#      'The ratio of Crassvirales/NCBI members.'=upset_annotate('crassvirales_ncbi_ratio', geom_boxplot(na.rm=TRUE))
+#    ),
+    min_size=5,
+#    n_intersections=30,
+    width_ratio=0.4,
+    wrap=TRUE,
+    set_sizes=(
+        upset_set_size()
+        + ylab('Number of protein clusters containing representatives of different Crassvirales families.')
+        + theme(axis.ticks.x=element_line()) +
+          geom_text(aes(label=..count..), hjust=1.1, stat='count')
+    )
+    ) +
+  ggtitle('Members of different Crassvirales families in different protein clusters.')
+ggsave(plot_name, plot = p, width = 25, height = 15, device = "png", dpi = 600)
+p
+```
+
+```{r}
+plot_name = 'C:\\crassvirales\\Bas_phages_large\\Bas_phages\\5_nr_screening\\4_merged_ncbi_crassvirales\\2_trees_leaves\\phylome_summary\\phylome_summary_protein_clusters_histplot.png'
+
+# Create a histogram
+hist_plot <- ggplot(phylome_summary_taxonomy, aes(x = total_members)) +
+  geom_histogram(binwidth = 1, color = "black") +
+  labs(title = "Histogram of protein cluster sizes.",
+       x = "Number of cluster members",
+       y = "Number of protein clusters") +
+  theme_bw()
+
+ggsave(plot_name, plot = hist_plot, device = "png", dpi = 600)
+
+# Show the plot
+print(hist_plot)
+```
+
+
+```{r}
+plot_name = 'C:\\crassvirales\\Bas_phages_large\\Bas_phages\\5_nr_screening\\4_merged_ncbi_crassvirales\\2_trees_leaves\\phylome_summary\\phylome_summary_protein_clusters_scatterplot.png'
+
+# Create a scatter plot
+scatter_plot <- ggplot(phylome_summary_taxonomy, aes(x = count_crassvirales, y = count_ncbi)) +
+  geom_point() +
+  labs(title = "Phylome protein clusters, scatterplot",
+       x = "The number of Crassvirales proteins in the cluster",
+       y = "The number of NCBI proteins in the cluster") +
+  theme_bw()
+
+ggsave(plot_name, plot = scatter_plot, device = "png", dpi = 600)
+
+# Show the plot
+print(scatter_plot)
+```
+# Plots for Viroinf short 10 minutes presentation
+
+```{r}
+plot_name = 'C:\\crassvirales\\Bas_phages_large\\Bas_phages\\5_nr_screening\\4_merged_ncbi_crassvirales\\2_trees_leaves\\phylome_summary\\phylome_summary_upset_plot_viroinf.png'
+
+families = c("outgroup", "Crevaviridae", "Epsilon", "Intestiviridae",
+             "Suoliviridae", "Steigviridae", "Zeta", "unknown")
+
+p <- upset(
+    # phylome_summary_taxonomy_only_proteins,
+    phylome_summary_taxonomy,
+    families,
+    base_annotations=list(
+        'Intersection size'=intersection_size(),
+        # using shorthand:
+        'Intersection ratio'=intersection_ratio(text_mapping=aes(label=!!upset_text_percentage()))
+    ),
+    annotations = list(
+       'Number of protein family members'=upset_annotate('total_members', geom_boxplot(na.rm=TRUE)),
+       'Number of Crassvirales members'=upset_annotate('count_crassvirales', geom_boxplot(na.rm=TRUE))
+        ),
+    min_size=5,
+#    n_intersections=30,
+    width_ratio=0.4,
+    wrap=TRUE,
+    set_sizes=(
+        upset_set_size()
+        + ylab('Number of protein families containing members of different Crassvirales families.')
+        + theme(axis.ticks.x=element_line()) +
+          geom_text(aes(label=..count..), hjust=1.1, stat='count')
+    )
+    ) +
+  # Increase the font size of all text
+  theme(text=element_text(size=40), title=element_text(size=40))
+
+ggsave(plot_name, plot = p, width = 25, height = 15, device = "png", dpi = 600)
+p
+```
+
+
+
+
+```{r}
+plot_name = "C:\\crassvirales\\Bas_phages_large\\Bas_phages\\5_nr_screening\\4_merged_ncbi_crassvirales\\2_trees_leaves\\phylome_summary\\phylome_summary_families_number_viroinf.png"
+
+# Create a histogram with sequential numbers from 1 to 8
+hist_plot <- ggplot(phylome_summary_taxonomy, aes(x = families_number)) +
+  geom_histogram(binwidth = 1, fill = "#66c2a5", color = "#1f78b4", alpha = 0.8) +
+  labs(#title = "Distribution of the Crassvirales families numbers",
+       x = "Number of different Crassvirales families",
+       y = "Number of protein families") +
+  scale_x_continuous(breaks = seq(1, 8, 1)) +
+  scale_y_continuous(breaks = seq(0, 3000, 500)) +
+  theme_bw() +
+  theme(axis.title = element_text(size = 20),  # Adjust the 'size' parameter as needed
+        axis.text = element_text(size = 16))   # Adjust the 'size' parameter as needed
+
+# Save the plot to the specified file location
+ggsave(plot_name, plot = hist_plot, device = "png", dpi = 600)
+#png(plot_name, width = 1600, height = 1200, units = "px", res = 600)
+
+hist_plot
+```
+```{r}
+# Load the dataframe
+taxonomy_s1 <- "C:\\crassvirales\\phylomes\\supplementary_tables\\phylome_taxonomy_s1.txt"
+phylome_taxonomy <- read.csv(taxonomy_s1, header = TRUE, sep = "\t")
+
+# Assuming 'phylome_top_20' is your dataframe
+phylome_taxonomy <- phylome_taxonomy %>%
+  mutate(host_phylum = gsub("^p__", "", host_phylum),  # Remove prefix 'p__'
+         host_order = gsub("^o__", "", host_order),
+         host_phylum = ifelse(host_phylum == "Bacteroidota", "Bacteroidetes", host_phylum),  # Substitute 'Bacteroidota' with 'Bacteroidetes'
+         host_phylum = ifelse(host_phylum == "Spirochaetota", "Spirochaetes", host_phylum))  # Substitute 'Spirochaetota' with 'Spirochaetes'
+
+
+summary(phylome_taxonomy)
+```
+
+
+
+```{r}
+plot_name <- "C:\\crassvirales\\Bas_phages_large\\Bas_phages\\5_nr_screening\\4_merged_ncbi_crassvirales\\2_trees_leaves\\phylome_summary\\top_20_iphop_orders.png"
+
+# Convert 'host_order' to a factor with levels sorted by frequency
+phylome_taxonomy$host_order <- factor(phylome_taxonomy$host_order, 
+                                      levels = names(sort(table(phylome_taxonomy$host_order), decreasing = TRUE)))
+
+# Select the top 20 values
+top_20_values <- names(head(sort(table(phylome_taxonomy$host_order), decreasing = TRUE), 20))
+
+# Subset the dataframe to include only the top 20 values
+phylome_top_20 <- subset(phylome_taxonomy, host_order %in% top_20_values)
+
+# Create a descending histogram for the 'host_order' column
+hist_plot <- ggplot(phylome_top_20, aes(x = host_order, fill = host_phylum)) +
+  geom_bar(stat = "count", color = "black", alpha = 0.8) +
+  labs(#title = "Potential hosts predicted by the iPHoP",
+       x = "Host's predicted order",
+       y = "Number of Crassvirales genomes") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +  # Rotate x-axis labels for better readability
+  scale_fill_discrete(name = "Host Phylum") +  # Add legend for host_phylum
+  scale_fill_manual(values = custom_palette, name = "Phylum") +
+  scale_y_continuous(breaks = seq(0, 900, 100))
+
+# Save the plot to a PNG file
+ggsave(plot_name, plot = hist_plot, width = 10, height = 5, device = "png", dpi = 1800)
+hist_plot
+# print(top_20_hist_plot + geom_bar(data = top_20_data, stat = "count", aes(x = host_order), fill = "#66c2a5", color = "#1f78b4", alpha = 0.8))
+# dev.off()
+```
+```{r}
+# Custom color palette
+custom_palette <- c(
+  'Actinobacteria'='#8b4513',
+  'Bacteroidetes'='#228b22',
+  'Chloroflexi'='#40e0d0',
+  'Cyanobacteria'='#ffc0cb',
+  'Halobacteriota'='#00ff00',
+  'Firmicutes'='#4b0082',
+  'Firmicutes_A'='#ffff00',
+  'Patescibacteria'='#6495ed',
+  'Planctomycetes'='#ff00ff',
+  'Proteobacteria'='#0000ff',
+  'Spirochaetes'='#ff1493',
+  'Uroviricota'='#ff0000',
+  'unknown'='gray'
+)
+```
+
+
+
+```{r}
+# Load the dataframe
+phylome_annotation_path <- "C:\\crassvirales\\Bas_phages_large\\Bas_phages\\5_nr_screening\\4_merged_ncbi_crassvirales\\2_trees_leaves\\phylome_summary\\2_hits_summary_all_filtered_included_annotation.txt"
+
+# Define column names
+column_names <- c("protein_id", "included", "crassus", "name", "rank", "domain", "phylum", "class", "order", "family", "genus")
+
+phylome_annotation <- read.csv(phylome_annotation_path, header = FALSE, sep = "\t", col.names = column_names)
+
+# Fill empty values in 'order' and 'phylum' with 'unknown'
+phylome_annotation <- phylome_annotation %>%
+  mutate(order = ifelse(order == "", "unknown", as.character(order)),
+         phylum = ifelse(phylum == "", "unknown", phylum))
+
+summary(phylome_annotation)
+```
+```{r}
+# Select the top 20 values
+top_20_values <- names(head(sort(table(phylome_annotation$order), decreasing = TRUE), 20))
+
+# Create a new factor variable for 'order' with levels outside of top 20 set to 'Other'
+phylome_annotation$order <- factor(ifelse(phylome_annotation$order %in% top_20_values, 
+                                          phylome_annotation$order, 
+                                          "Other"), levels = c(top_20_values, "Other"))
+
+# Subset the dataframe to include only the top 20 values
+phylome_top_20 <- subset(phylome_annotation, order %in% top_20_values)
+
+# Select the top 10 values in 'phylum'
+top_10_phylum <- names(head(sort(table(phylome_annotation$phylum), decreasing = TRUE), 10))
+
+# Subset the dataframe to include only the top 10 values in 'phylum'
+phylome_top_10_phylum <- subset(phylome_top_20, phylum %in% top_10_phylum)
+
+# Fill empty values in 'order' and 'phylum' with 'unknown'
+phylome_top_10_phylum$order <- ifelse(phylome_top_10_phylum$order == "", "unknown", as.character(phylome_top_10_phylum$order))
+
+# Reorder the levels of 'order' based on their count
+phylome_top_10_phylum$order <- factor(phylome_top_10_phylum$order, 
+                                     levels = names(sort(table(phylome_top_10_phylum$order), decreasing = TRUE)))
+
+# Create a barplot for the 'order' column with colors based on 'phylum'
+hist_plot <- ggplot(phylome_top_10_phylum, aes(x = order, fill = phylum)) +
+  geom_bar(color = "black", alpha = 0.8) +
+  labs(title = "NCBI proteins homologous to Crassvirales proteins",
+       x = "Order",
+       y = "Number of NCBI proteins") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +  # Rotate x-axis labels for better readability
+#  scale_fill_discrete(name = "Phylum")  # Add legend for phylum
+  scale_fill_manual(values = custom_palette, name = "Phylum") +  # Use custom color palette
+  scale_y_continuous(breaks = seq(0, 200000, 20000))
+
+# Print the plot
+print(hist_plot)
+```
+
+```{r}
+c('Actinobacteria', 'Bacteroidetes', 'Chloroflexi', 'Cyanobacteria', 'Halobacteriota',
+  'Firmicutes', 'Firmicutes_A', 'Patescibacteria', 'Planctomycetes', 'Proteobacteria',
+  'Spirochaetes', 'unkown', 'Uroviricota')
+```
+
