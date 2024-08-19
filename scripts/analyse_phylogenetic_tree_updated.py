@@ -371,41 +371,50 @@ def root_tree_at_bacteria(tree: Tree) -> None:
     if root_node:
         tree.set_outgroup(root_node)
 
-def layout(node: Tree) -> None:
-    """Custom layout for visualizing the tree with color boxes in the order: source, superkingdom, phylum, and order."""
+
+def layout(node: Tree, align_labels: bool = False, align_boxes: bool = False) -> None:
+    """Custom layout for visualizing the tree with color boxes in the order: source, superkingdom, phylum, and order.
+
+    Args:
+        node (Tree): The node of the tree being processed.
+        align_labels (bool): If True, align labels to the right side of the plot.
+        align_boxes (bool): If True, align color boxes to the right side of the plot.
+    """
+    # Position the label
+    label_position = 'aligned' if align_labels else 'branch-right'
     if not hasattr(node, 'label_added') or not node.label_added:
-        # Increase the font size by adjusting the `fsize` parameter
-        name_face = TextFace(node.name, fgcolor='black', fsize=20)  # Set the font size here
-        node.add_face(name_face, column=0, position='branch-right')
+        name_face = TextFace(node.name, fgcolor='black', fsize=20)  # Adjust the font size as needed
+        node.add_face(name_face, column=0, position=label_position)
         node.label_added = True
 
-    # Add a color strip for the source
+    # Determine box alignment
+    box_position = 'aligned' if align_boxes else 'branch-right'
+    column_offset = 1  # Start color boxes in the first column after labels
+
+    # Add color strips for annotations (source, superkingdom, phylum, order)
     if 'source' in node.features:
         source = node.source
         color = source_colors.get(source, 'gray')
         color_face = faces.RectFace(width=20, height=20, fgcolor=color, bgcolor=color)
-        node.add_face(color_face, column=1, position='branch-right')
+        node.add_face(color_face, column=column_offset, position=box_position)
 
-    # Add a color strip for the superkingdom
     if 'superkingdom' in node.features:
         superkingdom = node.superkingdom
         color = superkingdom_colors.get(superkingdom, superkingdom_colors['Other'])
         color_face = faces.RectFace(width=20, height=20, fgcolor=color, bgcolor=color)
-        node.add_face(color_face, column=2, position='branch-right')
+        node.add_face(color_face, column=column_offset + 1, position=box_position)
 
-    # Add a color strip for the phylum
     if 'phylum' in node.features:
         phylum = node.phylum
         color = phylum_colors.get(phylum, 'gray')
         color_face = faces.RectFace(width=20, height=20, fgcolor=color, bgcolor=color)
-        node.add_face(color_face, column=3, position='branch-right')
+        node.add_face(color_face, column=column_offset + 2, position=box_position)
 
-    # Add a color strip for the order
     if 'order' in node.features:
         order = node.order
         color = crassvirales_color if order == 'Crassvirales' else 'gray'
         color_face = faces.RectFace(width=20, height=20, fgcolor=color, bgcolor=color)
-        node.add_face(color_face, column=4, position='branch-right')
+        node.add_face(color_face, column=column_offset + 3, position=box_position)
 
     if 'order' in node.features and node.order == 'Crassvirales':
         node_style = NodeStyle()
@@ -481,9 +490,23 @@ def add_simplified_legend(ts: TreeStyle) -> None:
         ts.legend.add_face(text_face, column=1)
 
 
-def save_tree_plot(tree: Tree, output_path: str, layout_fn=layout) -> None:
-    """Save the tree plot to a file."""
+def save_tree_plot(tree: Tree, output_path: str, align_labels: bool = False, align_boxes: bool = False,
+                   layout_fn=None) -> None:
+    """Save the tree plot to a file.
+
+    Args:
+        tree (Tree): The tree to be visualized.
+        output_path (str): The path to save the tree plot.
+        align_labels (bool): If True, align labels to the right side of the plot.
+        align_boxes (bool): If True, align color boxes to the right side of the plot.
+        layout_fn: Custom layout function to use (if any). Defaults to the standard layout.
+    """
     ts = TreeStyle()
+
+    # Use the provided layout function or the default one
+    if layout_fn is None:
+        layout_fn = lambda n: layout(n, align_labels, align_boxes)
+
     ts.layout_fn = layout_fn
     ts.show_leaf_name = False
     ts.mode = 'r'
@@ -499,8 +522,18 @@ def save_tree_plot(tree: Tree, output_path: str, layout_fn=layout) -> None:
 
 
 def process_and_save_tree(tree_type: str, tree_path: str, annotations: pd.DataFrame,
-                          output_paths: Dict[str, str]) -> None:
-    """Process and save the tree of a specific type (rooted, unrooted, midpoint)."""
+                          output_paths: Dict[str, str],
+                          align_labels: bool = False, align_boxes: bool = False) -> None:
+    """Process and save the tree of a specific type (rooted, unrooted, midpoint).
+
+    Args:
+        tree_type (str): Type of the tree (e.g., 'rooted', 'unrooted', 'midpoint').
+        tree_path (str): Path to the tree file.
+        annotations (pd.DataFrame): DataFrame containing annotations.
+        output_paths (Dict[str, str]): Paths to save outputs.
+        align_labels (bool): If True, align labels to the right side of the plot.
+        align_boxes (bool): If True, align color boxes to the right side of the plot.
+    """
     tree = load_tree(tree_path)
     annotate_tree(tree, annotations)
     assign_unique_ids(tree)
@@ -510,7 +543,7 @@ def process_and_save_tree(tree_type: str, tree_path: str, annotations: pd.DataFr
     elif tree_type == 'midpoint':
         tree.set_outgroup(tree.get_midpoint_outgroup())
 
-    save_tree_plot(tree, output_paths['tree_plot'])
+    save_tree_plot(tree, output_paths['tree_plot'], align_labels=align_labels, align_boxes=align_boxes)
     save_clade_statistics(tree, extract_cluster_name(tree_path), output_paths['all_clades'])
 
     all_clades_df = pd.read_csv(output_paths['all_clades'], sep='\t')
@@ -709,7 +742,8 @@ def main() -> None:
     # cluster_name = "cl_s_283"
     # cluster_names = "cl_s_283 cl_s_004 cl_s_340".split()
     # cluster_names = "cl_s_022 cl_s_066 cl_s_377 cl_s_136".split()
-    cluster_names = "cl_s_283 cl_s_022 cl_s_377".split()
+    # cluster_names = "cl_s_283 cl_s_022 cl_s_377".split()
+    cluster_names = ["cl_s_283"]
 
     for cluster_name in cluster_names:
         wd, phylome_summary, cluster_name, trees_dir, annotation_path = setup_input_paths(cluster_name)
@@ -720,7 +754,7 @@ def main() -> None:
             tree_path = f'{trees_dir}/{cluster_name}_ncbi_trimmed.nw'
             output_paths = setup_output_paths(phylome_summary, cluster_name, tree_type)
             # print(f"Type of 'all_clades': {type(output_paths['all_clades'])}")
-            process_and_save_tree(tree_type, tree_path, annotations, output_paths)
+            process_and_save_tree(tree_type, tree_path, annotations, output_paths, align_labels=False, align_boxes=True)
             concatenate_clades_tables(output_paths['output_dir'], output_paths['biggest_non_intersecting_clades_all'])
 
             plot_bacterial_ratios_vs_threshold(output_paths['biggest_non_intersecting_clades_all'],
