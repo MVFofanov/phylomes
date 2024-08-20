@@ -14,18 +14,18 @@ mkdir -p "$output_dir_ncbi"
 
 # Read the list of strings from the file
 while IFS= read -r genome_id; do
-    # Extract the first part of the filename without '_ncbi_'
-    id_prefix=$(echo "$genome_id" | awk -F'_ncbi_' '{print $1}')
+  # Extract the first part of the filename without '_ncbi_'
+  id_prefix=$(echo "$genome_id" | awk -F'_ncbi_' '{print $1}')
 
-    # Perform grep operation on each file in the source directory
-    grep_result=$(grep -l "$genome_id" "$source_directory"/*)
+  # Perform grep operation on each file in the source directory
+  grep_result=$(grep -l "$genome_id" "$source_directory"/*)
 
-    # Check if grep result is not empty
-    if [ -n "$grep_result" ]; then
-        # Save matches to the crassvirales directory
-        echo "$grep_result" | xargs cp -t "$output_dir_crassvirales"
-    else
-        # Save non-matches to the ncbi directory
-        cp "$source_directory"/* "$output_dir_ncbi"
-    fi
-done < "$genome_ids_file"
+  # Check if grep result is not empty
+  if [ -n "$grep_result" ]; then
+    # Save matches to the crassvirales directory
+    echo "$grep_result" | xargs cp -t "$output_dir_crassvirales"
+  else
+    # Save non-matches to the ncbi directory
+    cp "$source_directory"/* "$output_dir_ncbi"
+  fi
+done <"$genome_ids_file"

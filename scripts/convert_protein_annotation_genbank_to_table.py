@@ -152,7 +152,8 @@ def process_tables(first_table_path, second_table_path, output_table_path):
     second_df = pd.read_csv(second_table_path, sep='\t')
 
     # Merge tables based on the protein_id
-    merged_df = pd.merge(first_df, second_df, left_on='protein_id', right_on='Protein_ID', how='left', suffixes=('', '_y'))
+    merged_df = pd.merge(first_df, second_df, left_on='protein_id', right_on='Protein_ID', how='left',
+                         suffixes=('', '_y'))
 
     # Identify rows that did not match in the second table
     unmatched_df = merged_df[merged_df['Protein_ID'].isna()].copy()
@@ -171,7 +172,8 @@ def process_tables(first_table_path, second_table_path, output_table_path):
     # Process 'phylome' source rows
     phylome_unmatched = unmatched_df[unmatched_df['source'] == 'phylome'].copy()
     phylome_unmatched = phylome_unmatched.apply(lambda row: {
-        **taxonomy_line_to_dict(f"Viruses;Duplodnaviria;Heunggongvirae;Uroviricota;Caudoviricetes;{row['order']};{row['family']};{row['subfamily']};{row['genus']}"),
+        **taxonomy_line_to_dict(
+            f"Viruses;Duplodnaviria;Heunggongvirae;Uroviricota;Caudoviricetes;{row['order']};{row['family']};{row['subfamily']};{row['genus']}"),
         'Protein_ID': row['protein_id']
     }, axis=1)
     phylome_unmatched_df = pd.DataFrame(phylome_unmatched.tolist())
@@ -246,7 +248,5 @@ if __name__ == "__main__":
     second_table_path = output_file
     output_table_path = f"{wd}/phylome_summary_with_current_taxonomy_and_phylome.txt"
 
-    #process_tables(first_table_path, second_table_path, output_table_path)
+    # process_tables(first_table_path, second_table_path, output_table_path)
     update_taxonomic_ranks(first_table_path, second_table_path, output_table_path)
-
-

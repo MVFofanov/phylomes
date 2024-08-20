@@ -105,7 +105,6 @@ if __name__ == "__main__":
 
     phylome_summary_taxonomy = f'{output_dir}/phylome_summary_with_taxonomy.tsv'
 
-
     # main(file1_path, output_dir, taxonomy_file, phylome_summary_taxonomy)
 
     output_cluster_per_genome = f'{output_dir}/protein_clusters_per_genome_summary.tsv'

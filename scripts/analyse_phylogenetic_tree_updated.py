@@ -2,11 +2,10 @@ import logging
 import os
 from typing import Tuple, Dict, List, Any
 
-from ete3 import Tree, TreeStyle, TextFace, NodeStyle, faces
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
-
+from ete3 import Tree, TreeStyle, TextFace, faces
 
 # Set environment variable for non-interactive backend
 os.environ['QT_QPA_PLATFORM'] = 'offscreen'
@@ -22,6 +21,7 @@ def setup_logging(output_dir: str, logging_level=logging.INFO) -> None:
         format='%(asctime)s - %(levelname)s - %(message)s',
         filemode='w'
     )
+
 
 # Color map for source
 # source_colors: Dict[str, str] = {
@@ -78,6 +78,7 @@ phylum_colors: Dict[str, str] = {
 
 crassvirales_color = '#fb9a99'
 
+
 def print_node_features(tree: Tree) -> None:
     """Log features of all nodes in the tree."""
     for node in tree.traverse():
@@ -87,17 +88,21 @@ def print_node_features(tree: Tree) -> None:
             logging.debug(f"  {feature_name}: {feature_value}")
         logging.debug("-" * 40)  # Separator between nodes
 
+
 def ensure_directory_exists(path: str) -> None:
     """Ensure the directory for the given path exists."""
     os.makedirs(path, exist_ok=True)
+
 
 def load_annotations(annotation_path: str) -> pd.DataFrame:
     """Load the annotation file into a pandas dataframe."""
     return pd.read_csv(annotation_path, sep='\t')
 
+
 def load_tree(tree_path: str) -> Tree:
     """Load the phylogenetic tree."""
     return Tree(tree_path)
+
 
 def annotate_tree(tree: Tree, annotations: pd.DataFrame) -> None:
     """Annotate the tree with values from the annotation file, allowing for partial matches."""
@@ -128,6 +133,7 @@ def annotate_tree(tree: Tree, annotations: pd.DataFrame) -> None:
                     subfamily=annotation['subfamily'],
                     genus=annotation['genus']
                 )
+
 
 def assign_unique_ids(tree: Tree) -> None:
     """Assign unique IDs to unnamed nodes."""
@@ -315,6 +321,7 @@ def save_clade_statistics(tree: Tree, cluster_name: str, output_file: str) -> No
     ])
     df.to_csv(output_file, sep='\t', index=False)
 
+
 def find_largest_non_intersecting_clades(df: pd.DataFrame, threshold: float) -> pd.DataFrame:
     """Find the largest non-intersecting clades with Crassvirales ratio above the threshold."""
     # Convert crassvirales_ratio to float
@@ -372,7 +379,6 @@ def assign_clade_features(tree: Tree, largest_clades: Dict[int, pd.DataFrame]) -
                 logging.debug(f"Assigned {feature_name} as False to node {node.name}")
 
 
-
 def find_biggest_clade(tree: Tree, cluster_name: str, thresholds: List[float], output_file: str) -> None:
     """Find the biggest clade for each threshold and save its details to a file."""
     results: List[List[Any]] = []
@@ -392,7 +398,8 @@ def find_biggest_clade(tree: Tree, cluster_name: str, thresholds: List[float], o
                 f"Clade_{node.name}", round(threshold, 2), node.name, cluster_name,
                 clade_info["crassvirales_proteins"], clade_info["bacterial_proteins"], clade_info["viral_proteins"],
                 clade_info["total_proteins"], round(ratio * 100, 2),
-                clade_info["crassvirales_protein_names"], clade_info["bacterial_protein_names"], clade_info["viral_protein_names"],
+                clade_info["crassvirales_protein_names"], clade_info["bacterial_protein_names"],
+                clade_info["viral_protein_names"],
                 round(clade_info["ratio_crass_to_bacterial"], 2),
                 round(clade_info["ratio_crass_to_viral"], 2),
                 round(clade_info["ratio_viral_to_bacterial"], 2),
@@ -410,9 +417,10 @@ def find_biggest_clade(tree: Tree, cluster_name: str, thresholds: List[float], o
         'ratio_crass_to_bacterial', 'ratio_crass_to_viral',
         'ratio_viral_to_bacterial', 'ratio_bacterial_to_viral',
         'ratio_bacterial_to_total', 'ratio_viral_to_total', 'ratio_other_to_total'
-        'all_members'
+                                                            'all_members'
     ])
     df.to_csv(output_file, sep='\t', index=False)
+
 
 def root_tree_at_bacteria(tree: Tree) -> None:
     """Root the tree at the most distant node belonging to the 'Bacteria' superkingdom."""
@@ -476,6 +484,7 @@ def layout(node: Tree, align_labels: bool = False, align_boxes: bool = False) ->
         else:
             color_face = faces.RectFace(width=20, height=20, fgcolor='white', bgcolor='white')
         node.add_face(color_face, column=column_offset + 4 + i, position='aligned')
+
 
 def add_simplified_legend(ts: TreeStyle) -> None:
     """Add a simplified and properly aligned legend to the tree style."""
@@ -592,7 +601,8 @@ def process_and_save_tree(tree_type: str, tree_path: str, annotations: pd.DataFr
     largest_clades = {}
     for i in range(0, 11):
         threshold = i * 10
-        clades_file = os.path.join(output_paths['output_dir'], f"biggest_non_intersecting_clades_{threshold}_percent.tsv")
+        clades_file = os.path.join(output_paths['output_dir'],
+                                   f"biggest_non_intersecting_clades_{threshold}_percent.tsv")
         if os.path.exists(clades_file):
             clades_df = pd.read_csv(clades_file, sep='\t')
             largest_clades[threshold] = clades_df
@@ -823,7 +833,6 @@ def main() -> None:
     for cluster_name in cluster_names:
         wd, phylome_summary, cluster_name, trees_dir, annotation_path = setup_input_paths(cluster_name)
         annotations = load_annotations(annotation_path)
-
 
         for tree_type in ['rooted']:
             tree_path = f'{trees_dir}/{cluster_name}_ncbi_trimmed.nw'

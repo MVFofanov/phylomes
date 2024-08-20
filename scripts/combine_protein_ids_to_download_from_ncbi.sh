@@ -7,21 +7,20 @@ input_file="$ids_dir/ncbi_cluster_ids_to_extract_proteins.txt"
 output_file="$ids_dir/ncbi_cluster_ids_to_extract_proteins_ids.txt"
 
 # Create an empty file for combined content
-> "$output_file"
+>"$output_file"
 
 # Loop through the list of filenames in the input file
 while IFS= read -r filename; do
   # Append '.txt' to each filename
   full_filename="$filename.txt"
-  
+
   # Check if the file exists before appending its content
   if [ -f "$ids_ncbi_dir/$full_filename" ]; then
-    cat "$ids_ncbi_dir/$full_filename" >> "$output_file"
-    echo "" >> "$output_file"  # Add a newline between file contents
+    cat "$ids_ncbi_dir/$full_filename" >>"$output_file"
+    echo "" >>"$output_file" # Add a newline between file contents
   else
     echo "Warning: File $full_filename not found."
   fi
-done < "$input_file"
+done <"$input_file"
 
 echo "Combining file contents completed. Output file: $output_file"
-

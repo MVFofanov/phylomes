@@ -15,7 +15,7 @@ def grep_genome_ids_vs_protein_ids(taxonomy_genome_ids_filename, tree_leaves_dir
             file_name = f'{tree_leaves_dir_all}/{file}'
             # print(file_name)
             cmd1 = f'grep -f {taxonomy_genome_ids_filename} {file_name} ' \
-                  f'> {tree_leaves_dir_crassvirales}/' \
+                   f'> {tree_leaves_dir_crassvirales}/' \
                    f'{file_name.removesuffix("_ncbi_trimmed_leaves_ids.txt").split("/")[-1]}.txt'
             # print(cmd1)
             cmd2 = f'grep -v -f {taxonomy_genome_ids_filename} {file_name} ' \
@@ -23,9 +23,9 @@ def grep_genome_ids_vs_protein_ids(taxonomy_genome_ids_filename, tree_leaves_dir
                    f'{file_name.removesuffix("_ncbi_trimmed_leaves_ids.txt").split("/")[-1]}.txt'
             # print(cmd2)
             ps1 = subprocess.Popen(cmd1, shell=True, executable="/bin/bash",
-                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                                   stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             ps2 = subprocess.Popen(cmd2, shell=True, executable="/bin/bash",
-                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                                   stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             _ = ps1.communicate()[0]
             _ = ps2.communicate()[0]
 
@@ -33,9 +33,9 @@ def grep_genome_ids_vs_protein_ids(taxonomy_genome_ids_filename, tree_leaves_dir
 def get_single_copy_per_genome_proteins(proteins_dir, leaves_dir,
                                         proteins_output_dir):
     for root, dirs, files in os.walk(proteins_dir):
-        #print(root)
-        #print(dirs)
-        #print(files[:5])
+        # print(root)
+        # print(dirs)
+        # print(files[:5])
         for file in files:
             if file.endswith('faa'):
                 # print(file)
@@ -48,13 +48,12 @@ def get_single_copy_per_genome_proteins(proteins_dir, leaves_dir,
                     proteins_output_file = f'{proteins_output_dir}/{data_source}/{cluster_name}.faa'
 
                     if not os.path.exists(proteins_output_file):
-
                         cmd = f'seqtk subseq {root}/{file} <(cut -f 1 {ids_filename}) ' \
-                               f'> {proteins_output_file}'
+                              f'> {proteins_output_file}'
                         # print(cmd)
                         # break
                         ps = subprocess.Popen(cmd, shell=True, executable="/bin/bash",
-                                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
                         _ = ps.communicate()[0]
                     # break
                 # print(file)
@@ -63,8 +62,7 @@ def get_single_copy_per_genome_proteins(proteins_dir, leaves_dir,
 
 
 def download_ncbi_proteins():
-
-
+    pass
 
 if __name__ == '__main__':
     taxonomy_filename = '/mnt/c/crassvirales/phylomes/supplementary_tables/phylome_taxonomy_s1.txt'
@@ -75,7 +73,6 @@ if __name__ == '__main__':
     tree_leaves_dir_all = f'{tree_leaves_dir}/all'
     tree_leaves_dir_crassvirales = f'{tree_leaves_dir}/crassvirales'
     tree_leaves_dir_ncbi = f'{tree_leaves_dir}/ncbi'
-
 
     proteins_dir = '/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/0_faa'
     proteins_output_dir = '/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/2_trees_leaves/proteins'

@@ -1,9 +1,5 @@
-import csv
-
-
 def make_annotation():
-
-
+    pass
 
 if __name__ == '__main__':
     hits_summary_dir = '/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/2_hits_summary'

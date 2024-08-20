@@ -1,6 +1,5 @@
 import csv
 
-
 crassus_file = "/mnt/c/crassvirales/phylomes/crassus_phylome/crassus_results.tsv"
 
 iphop_genome_file = "/mnt/c/crassvirales/phylomes/iphop_phylome_crassphages/Host_prediction_to_genome_m90.csv"
@@ -25,7 +24,7 @@ def _(filename: str, result: dict):
 
 
 if __name__ == "__main__":
-    #print(output_file_name)
+    # print(output_file_name)
     result = {}
     hosts = []
 
@@ -44,7 +43,7 @@ if __name__ == "__main__":
         reader = csv.DictReader(input_file, delimiter='\t')
         crassus_contigs = []
         for line in reader:
-            #print(line)
+            # print(line)
             contig_id = line['contig']
             crassus_contigs.append(contig_id)
             result[contig_id].extend([line['family'], line['subfamily'], line['genus'], line['species']])
@@ -57,7 +56,7 @@ if __name__ == "__main__":
         reader = csv.DictReader(input_file, delimiter='\t')
         genomad_contigs = []
         for line in reader:
-            #print(line)
+            # print(line)
             contig_id = line['seq_name'] if 'provirus' not in line['seq_name'] else line['seq_name'].split('|')[0]
             if contig_id not in genomad_contigs:
                 genomad_contigs.append(contig_id)
@@ -108,6 +107,3 @@ if __name__ == "__main__":
         output_file.write('\t'.join(header) + '\n')
         for key, values in result.items():
             output_file.write('\t'.join([key, *values]) + '\n')
-
-
-

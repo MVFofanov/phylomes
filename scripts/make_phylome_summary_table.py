@@ -27,9 +27,10 @@ def make_basic_phylome_summary(file1_path, file2_path, output_dir):
 
     # Count lines for each value in the first column
     # print(table1.columns)
-    #count_table1 = count_lines(table1, 'cluster_name')
-    count_table1  = table1['cluster_name'].value_counts().reset_index().rename(columns={'cluster_name': 'count_crassvirales',
-                                                                                        'index': 'cluster_name'})
+    # count_table1 = count_lines(table1, 'cluster_name')
+    count_table1 = table1['cluster_name'].value_counts().reset_index().rename(
+        columns={'cluster_name': 'count_crassvirales',
+                 'index': 'cluster_name'})
     # print(count_table1.columns)
     count_table1.to_csv(f'{output_dir}/crassvirales_counts.tsv', sep='\t', index=False)
 
@@ -57,7 +58,8 @@ def make_basic_phylome_summary(file1_path, file2_path, output_dir):
     final_result['crassvirales_ncbi_ratio'] = (final_result['count_crassvirales'] / final_result['count_ncbi']).round(2)
     final_result['total_members'] = final_result['count_crassvirales'] + final_result['count_ncbi']
 
-    final_result['crassvirales_total_ratio'] = (final_result['count_crassvirales'] / final_result['total_members']).round(
+    final_result['crassvirales_total_ratio'] = (
+            final_result['count_crassvirales'] / final_result['total_members']).round(
         2)
 
     final_result = pd.merge(final_result, merged_lists_table1, on='cluster_name', how='outer',
@@ -90,7 +92,6 @@ def add_taxonomy_information(basic_phylome_summary, taxonomy_file, output_dir):
     phylome_df['genome_id_crassvirales'] = phylome_df['protein_id_crassvirales'].str.split(', ')
     # print(phylome_df['protein_id_crassvirales'][0])
 
-
     # phylome_df['protein_id_crassvirales'] = phylome_df['protein_id_crassvirales'].apply(
     #     lambda x: ''.join([item for element in x for item in element.split('|')[:-2]])
     # )
@@ -105,7 +106,6 @@ def add_taxonomy_information(basic_phylome_summary, taxonomy_file, output_dir):
     phylome_df['taxonomy_info'] = phylome_df['genome_id_crassvirales'].apply(
         lambda x: [taxonomy[element] for element in set(x)]
     )
-
 
     # Optionally, you can join the results into a single string
     phylome_df['taxonomy_info'] = phylome_df['taxonomy_info'].apply(lambda x: ', '.join(x))
@@ -155,6 +155,7 @@ def add_functions_information(hylome_summary_taxonomy, phylome_summary_functions
     yutin_df = pd.read_csv(functions_yutin, sep='\t')
     pfam_df = pd.read_csv(functions_pfam, sep='\t')
 
+
 def join_phylome_summary_taxonomy_and_separate_cls_tables(table1_path, table2_path, join_column, output_path):
     # Read the first table
     table1 = pd.read_csv(table1_path, sep='\t')
@@ -203,7 +204,7 @@ def main():
     separate_cls_path = "/mnt/c/crassvirales/phylomes/Dani_results/separate_cls.txt"
 
     phylome_summary_with_taxonomy_and_type_path = "/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/" \
-                  "2_trees_leaves/phylome_summary/phylome_summary_with_taxonomy_and_type.tsv"
+                                                  "2_trees_leaves/phylome_summary/phylome_summary_with_taxonomy_and_type.tsv"
     join_column = "CL"
 
     join_phylome_summary_taxonomy_and_separate_cls_tables(separate_cls_path, phylome_summary_taxonomy,

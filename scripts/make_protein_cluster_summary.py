@@ -1,5 +1,7 @@
 import os
+
 import pandas as pd
+
 
 def generate_clusters_summary(directory, output_file):
     # List to store data for the summary table
@@ -11,7 +13,8 @@ def generate_clusters_summary(directory, output_file):
             filepath = os.path.join(directory, filename)
 
             # Read the file into a DataFrame
-            df = pd.read_csv(filepath, sep='\t', header=None, names=['cluster_members_number', 'cluster_members_mean_length'])
+            df = pd.read_csv(filepath, sep='\t', header=None,
+                             names=['cluster_members_number', 'cluster_members_mean_length'])
 
             # Extract cluster name from the filename
             cluster_name = os.path.splitext(os.path.basename(filename))[0].replace('_lengths', '')
@@ -21,7 +24,8 @@ def generate_clusters_summary(directory, output_file):
             summary_data.append([cluster_name, len(df), mean_length])
 
     # Create a DataFrame from the summary data
-    summary_df = pd.DataFrame(summary_data, columns=['cluster_name', 'cluster_members_number', 'cluster_members_mean_length'])
+    summary_df = pd.DataFrame(summary_data,
+                              columns=['cluster_name', 'cluster_members_number', 'cluster_members_mean_length'])
 
     # Round the values in the third column to two decimal places
     summary_df['cluster_members_mean_length'] = summary_df['cluster_members_mean_length'].round(2)
@@ -44,6 +48,7 @@ def generate_clusters_summary(directory, output_file):
     summary_df.to_csv(output_file, sep='\t', index=False)
 
     return summary_df
+
 
 if __name__ == '__main__':
     # Example usage:
