@@ -764,6 +764,21 @@ def plot_number_of_members_boxplot(concatenated_table: str, output_dir: str, tre
     plt.close()
 
 
+def generate_plots(output_paths: Dict[str, str], tree_type: str) -> None:
+    """Generate and save all relevant plots.
+
+    Args:
+        output_paths (Dict[str, str]): Dictionary containing output paths for the various files.
+        tree_type (str): The type of the tree being analyzed (e.g., 'rooted', 'unrooted', 'midpoint').
+    """
+    concatenated_table = output_paths['biggest_non_intersecting_clades_all']
+
+    plot_bacterial_ratios_vs_threshold(concatenated_table, output_paths['output_dir'], tree_type)
+    plot_crassvirales_bacterial_viral_ratios_vs_threshold(concatenated_table, output_paths['output_dir'], tree_type)
+    plot_number_of_clades_vs_threshold(concatenated_table, output_paths['output_dir'], tree_type)
+    plot_number_of_members_boxplot(concatenated_table, output_paths['output_dir'], tree_type)
+
+
 def setup_input_paths(cluster_name: str) -> Tuple[str, str, str, str, str]:
     """Setup and return all necessary paths."""
     wd = '/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/2_trees_leaves'
@@ -819,21 +834,7 @@ def main() -> None:
                                   logging_level=logging.DEBUG)
             concatenate_clades_tables(output_paths['output_dir'], output_paths['biggest_non_intersecting_clades_all'])
 
-            plot_bacterial_ratios_vs_threshold(output_paths['biggest_non_intersecting_clades_all'],
-                                               output_paths['output_dir'],
-                                               tree_type)
-
-            plot_crassvirales_bacterial_viral_ratios_vs_threshold(output_paths['biggest_non_intersecting_clades_all'],
-                                                                  output_paths['output_dir'],
-                                                                  tree_type)
-
-            plot_number_of_clades_vs_threshold(output_paths['biggest_non_intersecting_clades_all'],
-                                               output_paths['output_dir'],
-                                               tree_type)
-
-            plot_number_of_members_boxplot(output_paths['biggest_non_intersecting_clades_all'],
-                                           output_paths['output_dir'],
-                                           tree_type)
+            generate_plots(output_paths, tree_type)
 
 
 if __name__ == "__main__":
