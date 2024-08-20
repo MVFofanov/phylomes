@@ -1,5 +1,6 @@
 import logging
 import os
+from time import perf_counter  # Import perf_counter for more precise time measurement
 from typing import Dict, Tuple
 
 import pandas as pd
@@ -74,15 +75,17 @@ def process_and_save_tree(tree_type: str, tree_path: str, annotations: pd.DataFr
 
     assign_clade_features(tree, largest_clades)
 
-    save_tree_plot(tree, output_paths['tree_plot'], align_labels=align_labels, align_boxes=align_boxes)
-
     save_clade_statistics(tree, extract_cluster_name(tree_path), output_paths['all_clades'])
     save_biggest_non_intersecting_clades_by_thresholds(output_paths['all_clades'], output_paths['output_dir'])
+    save_tree_plot(tree, output_paths['tree_plot'], align_labels=align_labels, align_boxes=align_boxes)
 
 
 def main() -> None:
+    start_time = perf_counter()  # Start time measurement using perf_counter
+
     cluster_names = ["cl_s_283"]
-    tree_types = ['rooted', 'unrooted', 'midpoint']
+    # tree_types = ['rooted', 'unrooted', 'midpoint']
+    tree_types = ['rooted']
 
     for cluster_name in cluster_names:
         wd, phylome_summary, cluster_name, trees_dir, annotation_path = setup_input_paths(cluster_name)
@@ -96,6 +99,17 @@ def main() -> None:
             concatenate_clades_tables(output_paths['output_dir'], output_paths['biggest_non_intersecting_clades_all'])
 
             generate_plots(output_paths, tree_type)
+
+    end_time = perf_counter()  # End time measurement
+    elapsed_time = end_time - start_time  # Calculate elapsed time
+
+    # Log the time taken
+    total_time_message = f"Total execution time: {elapsed_time:.2f} seconds"
+
+    logging.info(total_time_message)
+
+    # Print the time taken
+    print(total_time_message)
 
 
 if __name__ == "__main__":
