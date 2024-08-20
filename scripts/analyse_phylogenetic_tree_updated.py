@@ -745,12 +745,14 @@ def main() -> None:
     # cluster_names = "cl_s_283 cl_s_022 cl_s_377".split()
     cluster_names = ["cl_s_283"]
 
+    tree_types = ['rooted', 'unrooted', 'midpoint']
+
     for cluster_name in cluster_names:
         wd, phylome_summary, cluster_name, trees_dir, annotation_path = setup_input_paths(cluster_name)
         annotations = load_annotations(annotation_path)
 
 
-        for tree_type in ['rooted', 'unrooted', 'midpoint']:
+        for tree_type in ['rooted']:
             tree_path = f'{trees_dir}/{cluster_name}_ncbi_trimmed.nw'
             output_paths = setup_output_paths(phylome_summary, cluster_name, tree_type)
             # print(f"Type of 'all_clades': {type(output_paths['all_clades'])}")
