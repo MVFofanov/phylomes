@@ -1,14 +1,16 @@
 import logging
-from typing import Dict, Tuple
-from logging_utils import setup_logging
-from tree_utils import load_tree, load_annotations, annotate_tree, assign_unique_ids,\
-    ensure_directory_exists, extract_cluster_name, root_tree_at_bacteria
-from clade_analysis import assign_clade_features, save_clade_statistics,\
-    concatenate_clades_tables, save_biggest_non_intersecting_clades_by_thresholds
-from plotting import generate_plots
-from plot_tree import save_tree_plot
 import os
+from typing import Dict, Tuple
+
 import pandas as pd
+
+from clade_analysis import assign_clade_features, save_clade_statistics, \
+    concatenate_clades_tables, save_biggest_non_intersecting_clades_by_thresholds
+from logging_utils import setup_logging
+from plot_tree import save_tree_plot
+from plotting import generate_plots
+from tree_utils import load_tree, load_annotations, annotate_tree, assign_unique_ids, \
+    ensure_directory_exists, extract_cluster_name, root_tree_at_bacteria
 
 # Set environment variable for non-interactive backend
 os.environ['QT_QPA_PLATFORM'] = 'offscreen'
@@ -45,6 +47,7 @@ def setup_output_paths(phylome_summary: str, cluster_name: str, tree_type: str) 
         'biggest_non_intersecting_clades_all': biggest_non_intersecting_clades_all
     }
 
+
 def process_and_save_tree(tree_type: str, tree_path: str, annotations: pd.DataFrame,
                           output_paths: Dict[str, str],
                           align_labels: bool = False, align_boxes: bool = False,
@@ -63,7 +66,8 @@ def process_and_save_tree(tree_type: str, tree_path: str, annotations: pd.DataFr
     largest_clades = {}
     for i in range(0, 11):
         threshold = i * 10
-        clades_file = os.path.join(output_paths['output_dir'], f"biggest_non_intersecting_clades_{threshold}_percent.tsv")
+        clades_file = os.path.join(output_paths['output_dir'],
+                                   f"biggest_non_intersecting_clades_{threshold}_percent.tsv")
         if os.path.exists(clades_file):
             clades_df = pd.read_csv(clades_file, sep='\t')
             largest_clades[threshold] = clades_df
@@ -87,12 +91,15 @@ def main() -> None:
         for tree_type in tree_types:
             tree_path = f'{trees_dir}/{cluster_name}_ncbi_trimmed.nw'
             output_paths = setup_output_paths(phylome_summary, cluster_name, tree_type)
-            process_and_save_tree(tree_type, tree_path, annotations, output_paths, align_labels=False, align_boxes=True, logging_level=logging.DEBUG)
+            process_and_save_tree(tree_type, tree_path, annotations, output_paths, align_labels=False, align_boxes=True,
+                                  logging_level=logging.DEBUG)
             concatenate_clades_tables(output_paths['output_dir'], output_paths['biggest_non_intersecting_clades_all'])
 
             generate_plots(output_paths, tree_type)
 
+
 if __name__ == "__main__":
     import matplotlib
+
     matplotlib.use('Agg')  # Force matplotlib to use a non-interactive backend
     main()

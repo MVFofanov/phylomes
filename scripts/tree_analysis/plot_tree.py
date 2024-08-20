@@ -1,14 +1,15 @@
 import logging
 import os
-from ete3 import Tree, TreeStyle, TextFace, NodeStyle, faces
-from colours import source_colors, superkingdom_colors, phylum_colors, crassvirales_color
-from tree_utils import print_node_features
-import matplotlib
 
+import matplotlib
+from colours import source_colors, superkingdom_colors, phylum_colors, crassvirales_color
+from ete3 import Tree, TreeStyle, TextFace, faces
+from tree_utils import print_node_features
 
 # Set environment variable for non-interactive backend
 os.environ['QT_QPA_PLATFORM'] = 'offscreen'
 matplotlib.use('Agg')  # Force matplotlib to use a non-interactive backend
+
 
 def layout(node: Tree, align_labels: bool = False, align_boxes: bool = False) -> None:
     label_position = 'aligned' if align_labels else 'branch-right'
@@ -58,6 +59,7 @@ def layout(node: Tree, align_labels: bool = False, align_boxes: bool = False) ->
         else:
             color_face = faces.RectFace(width=20, height=20, fgcolor='white', bgcolor='white')
         node.add_face(color_face, column=column_offset + 4 + i, position='aligned')
+
 
 def add_legend(ts: TreeStyle) -> None:
     """Add a simplified and properly aligned legend to the tree style."""
@@ -126,6 +128,7 @@ def add_legend(ts: TreeStyle) -> None:
         text_face.margin_left = spacer_size
         ts.legend.add_face(color_face, column=0)
         ts.legend.add_face(text_face, column=1)
+
 
 def save_tree_plot(tree: Tree, output_path: str, align_labels: bool = False, align_boxes: bool = False,
                    layout_fn=None) -> None:

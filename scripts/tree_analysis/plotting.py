@@ -1,15 +1,11 @@
-import logging
 import pandas as pd
-import matplotlib.pyplot as plt
-import matplotlib
-
-import seaborn as sns
 import os
 from typing import Dict
-from ete3 import Tree, TreeStyle, TextFace, NodeStyle, faces
 
-from colours import source_colors, superkingdom_colors, phylum_colors, crassvirales_color
-from tree_utils import print_node_features
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+from colours import superkingdom_colors, phylum_colors, crassvirales_color
 
 
 def plot_bacterial_ratios_vs_threshold(concatenated_table: str, output_dir: str, tree_type: str) -> None:

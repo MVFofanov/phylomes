@@ -1,8 +1,10 @@
 import logging
 import os
+from typing import Dict, List, Any
+
 import pandas as pd
 from ete3 import Tree
-from typing import Dict, List, Any
+
 
 def count_clade_proteins(node: Tree) -> Dict[str, Any]:
     """Count Crassvirales, bacterial, and viral proteins, and calculate their ratios by specific bacterial phyla."""
@@ -108,6 +110,7 @@ def count_clade_proteins(node: Tree) -> Dict[str, Any]:
         **phyla_ratios
     }
 
+
 def save_clade_statistics(tree: Tree, cluster_name: str, output_file: str) -> None:
     """Save statistics for all nodes to a file."""
     results = []
@@ -167,6 +170,7 @@ def save_clade_statistics(tree: Tree, cluster_name: str, output_file: str) -> No
     ])
     df.to_csv(output_file, sep='\t', index=False)
 
+
 def find_largest_non_intersecting_clades(df: pd.DataFrame, threshold: float) -> pd.DataFrame:
     """Find the largest non-intersecting clades with Crassvirales ratio above the threshold."""
     # Convert crassvirales_ratio to float
@@ -203,6 +207,7 @@ def save_biggest_non_intersecting_clades_by_thresholds(all_clades_path: str, out
         selected_df.to_csv(output_path, sep='\t', index=False)
         # print(f"Saved biggest non-intersecting clades for {threshold}% threshold to {output_path}")
 
+
 def concatenate_clades_tables(output_dir: str, output_file: str) -> None:
     """Concatenate biggest_non_intersecting_clades tables for all thresholds and save to a new output table."""
     all_data = []
@@ -226,6 +231,7 @@ def concatenate_clades_tables(output_dir: str, output_file: str) -> None:
     else:
         logging.info(f"No data found to concatenate in {output_dir}")
         # print(f"No data found to concatenate in {output_dir}")
+
 
 def assign_clade_features(tree: Tree, largest_clades: Dict[int, pd.DataFrame]) -> None:
     """Assign clade features to each node for thresholds 0-100%."""

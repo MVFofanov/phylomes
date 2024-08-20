@@ -1,6 +1,7 @@
 import logging
 import os
 
+
 def setup_logging(output_dir: str, logging_level=logging.INFO) -> None:
     """Set up logging configuration to save logs in the specified output directory."""
     log_file_path = os.path.join(output_dir, 'log_tree_analysis.log')
