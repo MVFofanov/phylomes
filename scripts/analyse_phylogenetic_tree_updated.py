@@ -1,15 +1,27 @@
+import logging
 import os
-
-import matplotlib.pyplot as plt
-import pandas as pd
-import seaborn as sns
 from typing import Tuple, Dict, List, Any
 
 from ete3 import Tree, TreeStyle, TextFace, NodeStyle, faces
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+
 
 # Set environment variable for non-interactive backend
 os.environ['QT_QPA_PLATFORM'] = 'offscreen'
 
+
+def setup_logging(output_dir: str, logging_level=logging.INFO) -> None:
+    """Set up logging configuration to save logs in the specified output directory."""
+    log_file_path = os.path.join(output_dir, 'log_tree_analysis.log')
+
+    logging.basicConfig(
+        filename=log_file_path,
+        level=logging_level,  # Default level; change to logging.DEBUG for more detailed logs
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        filemode='w'
+    )
 
 # Color map for source
 # source_colors: Dict[str, str] = {
@@ -65,6 +77,15 @@ phylum_colors: Dict[str, str] = {
 }
 
 crassvirales_color = '#fb9a99'
+
+def print_node_features(tree: Tree) -> None:
+    """Log features of all nodes in the tree."""
+    for node in tree.traverse():
+        logging.debug(f"Node: {node.name}")
+        for feature_name in node.features:
+            feature_value = getattr(node, feature_name)
+            logging.debug(f"  {feature_name}: {feature_value}")
+        logging.debug("-" * 40)  # Separator between nodes
 
 def ensure_directory_exists(path: str) -> None:
     """Ensure the directory for the given path exists."""
@@ -221,6 +242,20 @@ def count_clade_proteins(node: Tree) -> Dict[str, Any]:
         **phyla_ratios
     }
 
+
+def annotate_nodes_with_clades(tree: Tree, largest_clades: Dict[int, pd.DataFrame]) -> None:
+    for threshold, clades_df in largest_clades.items():
+        for _, row in clades_df.iterrows():
+            node_name = row['node_name']
+            node = tree.search_nodes(name=node_name)[0]
+            node.add_features(**{f'clade_{threshold}': True})
+
+    for node in tree.traverse():
+        for i in range(0, 101, 10):
+            if not hasattr(node, f'clade_{i}'):
+                node.add_features(**{f'clade_{i}': False})
+
+
 def save_clade_statistics(tree: Tree, cluster_name: str, output_file: str) -> None:
     """Save statistics for all nodes to a file."""
     results = []
@@ -317,6 +352,27 @@ def save_biggest_non_intersecting_clades_by_thresholds(all_clades_path: str, out
         # print(f"Saved biggest non-intersecting clades for {threshold}% threshold to {output_path}")
 
 
+def assign_clade_features(tree: Tree, largest_clades: Dict[int, pd.DataFrame]) -> None:
+    """Assign clade features to each node for thresholds 0-100%."""
+    for threshold, clades_df in largest_clades.items():
+        for _, row in clades_df.iterrows():
+            node_name = row['node_name']
+            matching_nodes = tree.search_nodes(name=node_name)
+            if matching_nodes:
+                node = matching_nodes[0]
+                node.add_feature(f'clade_{threshold}', True)
+                logging.debug(f"Assigned clade_{threshold} as True to node {node.name}")
+
+    # Set False for clades that do not belong to any largest non-intersecting clades
+    for node in tree.traverse():
+        for threshold in range(0, 101, 10):
+            feature_name = f'clade_{threshold}'
+            if not hasattr(node, feature_name):
+                node.add_feature(feature_name, False)
+                logging.debug(f"Assigned {feature_name} as False to node {node.name}")
+
+
+
 def find_biggest_clade(tree: Tree, cluster_name: str, thresholds: List[float], output_file: str) -> None:
     """Find the biggest clade for each threshold and save its details to a file."""
     results: List[List[Any]] = []
@@ -373,25 +429,15 @@ def root_tree_at_bacteria(tree: Tree) -> None:
 
 
 def layout(node: Tree, align_labels: bool = False, align_boxes: bool = False) -> None:
-    """Custom layout for visualizing the tree with color boxes in the order: source, superkingdom, phylum, and order.
-
-    Args:
-        node (Tree): The node of the tree being processed.
-        align_labels (bool): If True, align labels to the right side of the plot.
-        align_boxes (bool): If True, align color boxes to the right side of the plot.
-    """
-    # Position the label
     label_position = 'aligned' if align_labels else 'branch-right'
     if not hasattr(node, 'label_added') or not node.label_added:
-        name_face = TextFace(node.name, fgcolor='black', fsize=20)  # Adjust the font size as needed
+        name_face = TextFace(node.name, fgcolor='black', fsize=20)
         node.add_face(name_face, column=0, position=label_position)
         node.label_added = True
 
-    # Determine box alignment
     box_position = 'aligned' if align_boxes else 'branch-right'
-    column_offset = 1  # Start color boxes in the first column after labels
+    column_offset = 1
 
-    # Add color strips for annotations (source, superkingdom, phylum, order)
     if 'source' in node.features:
         source = node.source
         color = source_colors.get(source, 'gray')
@@ -416,10 +462,20 @@ def layout(node: Tree, align_labels: bool = False, align_boxes: bool = False) ->
         color_face = faces.RectFace(width=20, height=20, fgcolor=color, bgcolor=color)
         node.add_face(color_face, column=column_offset + 3, position=box_position)
 
-    if 'order' in node.features and node.order == 'Crassvirales':
-        node_style = NodeStyle()
-        node_style['fgcolor'] = 'red'
-        node.set_style(node_style)
+    # Adjust the column offset for the new clade annotation boxes
+    # for i in range(0, 101, 10):
+    #     color = "black" if getattr(node, f'clade_{i}', False) else "white"
+    #     clade_face = faces.RectFace(width=20, height=20, fgcolor=color, bgcolor=color)
+    #     node.add_face(clade_face, column=column_offset + 4 + (i // 10), position='aligned')
+
+    # Add black/white boxes for clade features
+    for i, threshold in enumerate(range(0, 101, 10)):
+        clade_key = f'clade_{threshold}'
+        if hasattr(node, clade_key) and getattr(node, clade_key):
+            color_face = faces.RectFace(width=20, height=20, fgcolor='black', bgcolor='black')
+        else:
+            color_face = faces.RectFace(width=20, height=20, fgcolor='white', bgcolor='white')
+        node.add_face(color_face, column=column_offset + 4 + i, position='aligned')
 
 def add_simplified_legend(ts: TreeStyle) -> None:
     """Add a simplified and properly aligned legend to the tree style."""
@@ -492,18 +548,9 @@ def add_simplified_legend(ts: TreeStyle) -> None:
 
 def save_tree_plot(tree: Tree, output_path: str, align_labels: bool = False, align_boxes: bool = False,
                    layout_fn=None) -> None:
-    """Save the tree plot to a file.
-
-    Args:
-        tree (Tree): The tree to be visualized.
-        output_path (str): The path to save the tree plot.
-        align_labels (bool): If True, align labels to the right side of the plot.
-        align_boxes (bool): If True, align color boxes to the right side of the plot.
-        layout_fn: Custom layout function to use (if any). Defaults to the standard layout.
-    """
+    """Save the tree plot to a file."""
     ts = TreeStyle()
 
-    # Use the provided layout function or the default one
     if layout_fn is None:
         layout_fn = lambda n: layout(n, align_labels, align_boxes)
 
@@ -513,27 +560,25 @@ def save_tree_plot(tree: Tree, output_path: str, align_labels: bool = False, ali
     ts.scale = 100
 
     add_simplified_legend(ts)
+    print_node_features(tree)
 
     png_output_path = f"{output_path}.png"
     tree.render(png_output_path, tree_style=ts, dpi=1500)
+    logging.info(f"Tree plot saved to {png_output_path}")
 
     pdf_output_path = f"{output_path}.pdf"
     tree.render(pdf_output_path, tree_style=ts, dpi=1500)
+    logging.info(f"Tree plot saved to {pdf_output_path}")
 
 
 def process_and_save_tree(tree_type: str, tree_path: str, annotations: pd.DataFrame,
                           output_paths: Dict[str, str],
-                          align_labels: bool = False, align_boxes: bool = False) -> None:
-    """Process and save the tree of a specific type (rooted, unrooted, midpoint).
+                          align_labels: bool = False, align_boxes: bool = False,
+                          logging_level=logging.INFO) -> None:
+    """Process and save the tree of a specific type (rooted, unrooted, midpoint)."""
+    # Set up logging for this specific output directory with the given logging level
+    setup_logging(output_paths['output_dir'], logging_level=logging_level)
 
-    Args:
-        tree_type (str): Type of the tree (e.g., 'rooted', 'unrooted', 'midpoint').
-        tree_path (str): Path to the tree file.
-        annotations (pd.DataFrame): DataFrame containing annotations.
-        output_paths (Dict[str, str]): Paths to save outputs.
-        align_labels (bool): If True, align labels to the right side of the plot.
-        align_boxes (bool): If True, align color boxes to the right side of the plot.
-    """
     tree = load_tree(tree_path)
     annotate_tree(tree, annotations)
     assign_unique_ids(tree)
@@ -542,6 +587,17 @@ def process_and_save_tree(tree_type: str, tree_path: str, annotations: pd.DataFr
         root_tree_at_bacteria(tree)
     elif tree_type == 'midpoint':
         tree.set_outgroup(tree.get_midpoint_outgroup())
+
+    # Load clades for each threshold and assign features
+    largest_clades = {}
+    for i in range(0, 11):
+        threshold = i * 10
+        clades_file = os.path.join(output_paths['output_dir'], f"biggest_non_intersecting_clades_{threshold}_percent.tsv")
+        if os.path.exists(clades_file):
+            clades_df = pd.read_csv(clades_file, sep='\t')
+            largest_clades[threshold] = clades_df
+
+    assign_clade_features(tree, largest_clades)
 
     save_tree_plot(tree, output_paths['tree_plot'], align_labels=align_labels, align_boxes=align_boxes)
     save_clade_statistics(tree, extract_cluster_name(tree_path), output_paths['all_clades'])
@@ -573,9 +629,11 @@ def concatenate_clades_tables(output_dir: str, output_file: str) -> None:
         # Concatenate all dataframes
         concatenated_df = pd.concat(all_data, ignore_index=True)
         concatenated_df.to_csv(output_file, sep='\t', index=False)
-        print(f"Concatenated clades table saved to {output_file}")
+        logging.info(f"Concatenated clades table saved to {output_file}")
+        # print(f"Concatenated clades table saved to {output_file}")
     else:
-        print(f"No data found to concatenate in {output_dir}")
+        logging.info(f"No data found to concatenate in {output_dir}")
+        # print(f"No data found to concatenate in {output_dir}")
 
 
 def plot_bacterial_ratios_vs_threshold(concatenated_table: str, output_dir: str, tree_type: str) -> None:
@@ -756,7 +814,9 @@ def main() -> None:
             tree_path = f'{trees_dir}/{cluster_name}_ncbi_trimmed.nw'
             output_paths = setup_output_paths(phylome_summary, cluster_name, tree_type)
             # print(f"Type of 'all_clades': {type(output_paths['all_clades'])}")
-            process_and_save_tree(tree_type, tree_path, annotations, output_paths, align_labels=False, align_boxes=True)
+            process_and_save_tree(tree_type, tree_path, annotations, output_paths,
+                                  align_labels=False, align_boxes=True,
+                                  logging_level=logging.DEBUG)
             concatenate_clades_tables(output_paths['output_dir'], output_paths['biggest_non_intersecting_clades_all'])
 
             plot_bacterial_ratios_vs_threshold(output_paths['biggest_non_intersecting_clades_all'],
