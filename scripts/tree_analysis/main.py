@@ -1,6 +1,6 @@
 import logging
 import os
-from time import perf_counter  # Import perf_counter for more precise time measurement
+from time import perf_counter
 from typing import Dict, Tuple
 
 import pandas as pd
@@ -84,14 +84,17 @@ def main() -> None:
     start_time = perf_counter()  # Start time measurement using perf_counter
 
     cluster_names = ["cl_s_283"]
-    # tree_types = ['rooted', 'unrooted', 'midpoint']
+    # tree_types = ['rooted', 'unrooted', 'midpoint_rooted']
     tree_types = ['rooted']
 
     for cluster_name in cluster_names:
+        start_time_cluster = perf_counter()
         wd, phylome_summary, cluster_name, trees_dir, annotation_path = setup_input_paths(cluster_name)
         annotations = load_annotations(annotation_path)
 
         for tree_type in tree_types:
+            start_time_cluster_rooting = perf_counter()
+
             tree_path = f'{trees_dir}/{cluster_name}_ncbi_trimmed.nw'
             output_paths = setup_output_paths(phylome_summary, cluster_name, tree_type)
             process_and_save_tree(tree_type, tree_path, annotations, output_paths, align_labels=False, align_boxes=True,
@@ -99,6 +102,22 @@ def main() -> None:
             concatenate_clades_tables(output_paths['output_dir'], output_paths['biggest_non_intersecting_clades_all'])
 
             generate_plots(output_paths, tree_type)
+
+            end_time_cluster_rooting = perf_counter()
+            elapsed_time_cluster_rooting = end_time_cluster_rooting - start_time_cluster_rooting
+            elapsed_time_cluster_rooting_message = f"Total execution time for the {tree_type} {cluster_name} cluster: " \
+                                                   f"{elapsed_time_cluster_rooting:.2f} seconds"
+
+            logging.info(elapsed_time_cluster_rooting_message)
+            print(elapsed_time_cluster_rooting_message)
+
+        end_time_cluster = perf_counter()
+        elapsed_time_cluster = end_time_cluster - start_time_cluster
+        elapsed_time_cluster_message = f"Total execution time for {cluster_name} cluster: " \
+                                       f"{elapsed_time_cluster:.2f} seconds"
+
+        logging.info(elapsed_time_cluster_message)
+        print(elapsed_time_cluster_message)
 
     end_time = perf_counter()  # End time measurement
     elapsed_time = end_time - start_time  # Calculate elapsed time
