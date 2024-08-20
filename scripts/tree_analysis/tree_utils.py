@@ -1,5 +1,6 @@
 import os
 from ete3 import Tree
+import logging
 import pandas as pd
 from typing import Dict, Any
 
@@ -69,3 +70,12 @@ def root_tree_at_bacteria(tree: Tree) -> None:
                 root_node = node
     if root_node:
         tree.set_outgroup(root_node)
+
+def print_node_features(tree: Tree) -> None:
+    """Log features of all nodes in the tree."""
+    for node in tree.traverse():
+        logging.debug(f"Node: {node.name}")
+        for feature_name in node.features:
+            feature_value = getattr(node, feature_name)
+            logging.debug(f"  {feature_name}: {feature_value}")
+        logging.debug("-" * 40)  # Separator between nodes

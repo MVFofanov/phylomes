@@ -5,9 +5,12 @@ from tree_utils import load_tree, load_annotations, annotate_tree, assign_unique
     ensure_directory_exists, extract_cluster_name, root_tree_at_bacteria
 from clade_analysis import assign_clade_features, save_clade_statistics,\
     concatenate_clades_tables, save_biggest_non_intersecting_clades_by_thresholds
-from plotting import generate_plots
+from plotting import generate_plots, save_tree_plot
 import os
 import pandas as pd
+
+# Set environment variable for non-interactive backend
+os.environ['QT_QPA_PLATFORM'] = 'offscreen'
 
 
 def setup_input_paths(cluster_name: str) -> Tuple[str, str, str, str, str]:
@@ -65,9 +68,12 @@ def process_and_save_tree(tree_type: str, tree_path: str, annotations: pd.DataFr
             largest_clades[threshold] = clades_df
 
     assign_clade_features(tree, largest_clades)
+
+    save_tree_plot(tree, output_paths['tree_plot'], align_labels=align_labels, align_boxes=align_boxes)
+
     save_clade_statistics(tree, extract_cluster_name(tree_path), output_paths['all_clades'])
     save_biggest_non_intersecting_clades_by_thresholds(output_paths['all_clades'], output_paths['output_dir'])
-    generate_plots(output_paths, tree_type)
+
 
 def main() -> None:
     cluster_names = ["cl_s_283"]
@@ -81,6 +87,9 @@ def main() -> None:
             tree_path = f'{trees_dir}/{cluster_name}_ncbi_trimmed.nw'
             output_paths = setup_output_paths(phylome_summary, cluster_name, tree_type)
             process_and_save_tree(tree_type, tree_path, annotations, output_paths, align_labels=False, align_boxes=True, logging_level=logging.DEBUG)
+            concatenate_clades_tables(output_paths['output_dir'], output_paths['biggest_non_intersecting_clades_all'])
+
+            generate_plots(output_paths, tree_type)
 
 if __name__ == "__main__":
     import matplotlib
