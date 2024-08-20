@@ -5,7 +5,8 @@ from tree_utils import load_tree, load_annotations, annotate_tree, assign_unique
     ensure_directory_exists, extract_cluster_name, root_tree_at_bacteria
 from clade_analysis import assign_clade_features, save_clade_statistics,\
     concatenate_clades_tables, save_biggest_non_intersecting_clades_by_thresholds
-from plotting import generate_plots, save_tree_plot
+from plotting import generate_plots
+from plot_tree import save_tree_plot
 import os
 import pandas as pd
 
