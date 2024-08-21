@@ -1,7 +1,8 @@
+from functools import wraps
 import logging
 import os
 from time import perf_counter
-from typing import Dict, Tuple
+from typing import Any, Callable, Dict, Optional, Tuple
 
 import pandas as pd
 
@@ -15,6 +16,45 @@ from tree_utils import load_tree, load_annotations, annotate_tree, assign_unique
 
 # Set environment variable for non-interactive backend
 os.environ['QT_QPA_PLATFORM'] = 'offscreen'
+
+from typing import Callable, Any, Optional
+
+
+def time_it(message: Optional[str] = None) -> Callable[..., Any]:
+    """Decorator to measure the execution time of a function with an optional formatted message."""
+
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+        @wraps(func)
+        def wrapper(*args, **kwargs) -> Any:
+            start_time = perf_counter()
+            result = func(*args, **kwargs)
+            end_time = perf_counter()
+            elapsed_time = end_time - start_time
+
+            # Combine positional and keyword arguments into a single dictionary
+            arg_names = func.__code__.co_varnames[:func.__code__.co_argcount]
+            arg_dict = dict(zip(arg_names, args))
+            all_kwargs = {**arg_dict, **kwargs}
+
+            func_name = func.__name__
+
+            # If a message is provided, format it with combined arguments
+            if message:
+                try:
+                    final_message = message.format(**all_kwargs)
+                except KeyError as e:
+                    raise KeyError(f"Missing key in message format: {e}")
+            else:
+                final_message = func.__name__
+
+            log_message = f"Execution time for {final_message}:\t{elapsed_time:.2f} seconds\t{func_name}"
+            logging.info(log_message)
+            print(log_message)
+            return result
+
+        return wrapper
+
+    return decorator
 
 
 def setup_input_paths(cluster_name: str) -> Tuple[str, str, str, str, str]:
@@ -80,56 +120,37 @@ def process_and_save_tree(tree_type: str, tree_path: str, annotations: pd.DataFr
     save_tree_plot(tree, output_paths['tree_plot'], align_labels=align_labels, align_boxes=align_boxes)
 
 
-def main() -> None:
-    start_time = perf_counter()  # Start time measurement using perf_counter
+@time_it(message="cluster: {cluster_name}")
+def process_cluster(cluster_name: str, tree_types: list[str], wd: str, phylome_summary: str,
+                    trees_dir: str, annotation_path: str) -> None:
+    """Process a single cluster by generating trees, saving outputs, and creating plots."""
+    annotations = load_annotations(annotation_path)
 
+    for tree_type in tree_types:
+        process_tree_type(tree_type, cluster_name, trees_dir, annotations, phylome_summary)
+
+
+@time_it(message="{tree_type} cluster: {cluster_name}")
+def process_tree_type(tree_type: str, cluster_name: str, trees_dir: str, annotations: pd.DataFrame,
+                      phylome_summary: str) -> None:
+    """Process a specific tree type for a given cluster."""
+    tree_path = f'{trees_dir}/{cluster_name}_ncbi_trimmed.nw'
+    output_paths = setup_output_paths(phylome_summary, cluster_name, tree_type)
+    process_and_save_tree(tree_type, tree_path, annotations, output_paths, align_labels=False, align_boxes=True,
+                          logging_level=logging.DEBUG)
+    concatenate_clades_tables(output_paths['output_dir'], output_paths['biggest_non_intersecting_clades_all'])
+    generate_plots(output_paths, tree_type)
+
+
+@time_it(message="Main processing function")
+def main() -> None:
+    """Main function to process multiple clusters and tree types."""
     cluster_names = ["cl_s_283"]
-    # tree_types = ['rooted', 'unrooted', 'midpoint_rooted']
     tree_types = ['rooted']
 
     for cluster_name in cluster_names:
-        start_time_cluster = perf_counter()
         wd, phylome_summary, cluster_name, trees_dir, annotation_path = setup_input_paths(cluster_name)
-        annotations = load_annotations(annotation_path)
-
-        for tree_type in tree_types:
-            start_time_cluster_rooting = perf_counter()
-
-            tree_path = f'{trees_dir}/{cluster_name}_ncbi_trimmed.nw'
-            output_paths = setup_output_paths(phylome_summary, cluster_name, tree_type)
-            process_and_save_tree(tree_type, tree_path, annotations, output_paths, align_labels=False, align_boxes=True,
-                                  logging_level=logging.DEBUG)
-            concatenate_clades_tables(output_paths['output_dir'], output_paths['biggest_non_intersecting_clades_all'])
-
-            generate_plots(output_paths, tree_type)
-
-            end_time_cluster_rooting = perf_counter()
-            elapsed_time_cluster_rooting = end_time_cluster_rooting - start_time_cluster_rooting
-            elapsed_time_cluster_rooting_message = f"Total execution time for the " \
-                                                   f"{tree_type} {cluster_name} cluster: " \
-                                                   f"{elapsed_time_cluster_rooting:.2f} seconds"
-
-            logging.info(elapsed_time_cluster_rooting_message)
-            print(elapsed_time_cluster_rooting_message)
-
-        end_time_cluster = perf_counter()
-        elapsed_time_cluster = end_time_cluster - start_time_cluster
-        elapsed_time_cluster_message = f"Total execution time for {cluster_name} cluster: " \
-                                       f"{elapsed_time_cluster:.2f} seconds"
-
-        logging.info(elapsed_time_cluster_message)
-        print(elapsed_time_cluster_message)
-
-    end_time = perf_counter()  # End time measurement
-    elapsed_time = end_time - start_time  # Calculate elapsed time
-
-    # Log the time taken
-    total_time_message = f"Total execution time: {elapsed_time:.2f} seconds"
-
-    logging.info(total_time_message)
-
-    # Print the time taken
-    print(total_time_message)
+        process_cluster(cluster_name, tree_types, wd, phylome_summary, trees_dir, annotation_path)
 
 
 if __name__ == "__main__":

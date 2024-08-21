@@ -12,18 +12,20 @@ matplotlib.use('Agg')  # Force matplotlib to use a non-interactive backend
 
 
 def layout(node: Tree, align_labels: bool = False, align_boxes: bool = False) -> None:
+    WIDTH = HEIGHT = 20
+
     label_position = 'aligned' if align_labels else 'branch-right'
 
     if not hasattr(node, 'label_added') or not node.label_added:
         # Add the node name
-        name_face = TextFace(node.name, fgcolor='black', fsize=20)
+        name_face = TextFace(node.name, fgcolor='black', fsize=WIDTH)
         node.add_face(name_face, column=0, position=label_position)
 
         # Add the Crassvirales ratio and the total number of members in the clade
         if hasattr(node, 'ratio_crass_to_total') and hasattr(node, 'total_proteins'):
             ratio_face = TextFace(f"Crassvirales ratio: {node.ratio_crass_to_total * 100:.2f}%",
-                                  fgcolor='blue', fsize=18)
-            total_proteins_face = TextFace(f"Total members: {node.total_proteins}", fgcolor='green', fsize=18)
+                                  fgcolor='blue', fsize=15)
+            total_proteins_face = TextFace(f"Total members: {node.total_proteins}", fgcolor='green', fsize=15)
             node.add_face(ratio_face, column=0, position='branch-right')
             node.add_face(total_proteins_face, column=0, position='branch-right')
 
@@ -35,28 +37,28 @@ def layout(node: Tree, align_labels: bool = False, align_boxes: bool = False) ->
     if 'source' in node.features:
         source = node.source
         color = source_colors.get(source, 'gray')
-        color_face = faces.RectFace(width=20, height=20, fgcolor=color, bgcolor=color)
+        color_face = faces.RectFace(width=WIDTH, height=WIDTH, fgcolor=color, bgcolor=color)
         node.add_face(color_face, column=column_offset, position=box_position)
         column_offset += 1
 
     if 'superkingdom' in node.features:
         superkingdom = node.superkingdom
         color = superkingdom_colors.get(superkingdom, superkingdom_colors['Other'])
-        color_face = faces.RectFace(width=20, height=20, fgcolor=color, bgcolor=color)
+        color_face = faces.RectFace(width=WIDTH, height=WIDTH, fgcolor=color, bgcolor=color)
         node.add_face(color_face, column=column_offset, position=box_position)
         column_offset += 1
 
     if 'phylum' in node.features:
         phylum = node.phylum
         color = phylum_colors.get(phylum, 'gray')
-        color_face = faces.RectFace(width=20, height=20, fgcolor=color, bgcolor=color)
+        color_face = faces.RectFace(width=WIDTH, height=WIDTH, fgcolor=color, bgcolor=color)
         node.add_face(color_face, column=column_offset, position=box_position)
         column_offset += 1
 
     if 'order' in node.features:
         order = node.order
         color = crassvirales_color if order == 'Crassvirales' else 'gray'
-        color_face = faces.RectFace(width=20, height=20, fgcolor=color, bgcolor=color)
+        color_face = faces.RectFace(width=WIDTH, height=WIDTH, fgcolor=color, bgcolor=color)
         node.add_face(color_face, column=column_offset, position=box_position)
         column_offset += 1
 
@@ -69,9 +71,9 @@ def layout(node: Tree, align_labels: bool = False, align_boxes: bool = False) ->
     for i, threshold in enumerate(range(0, 101, 10)):
         clade_key = f'clade_{threshold}'
         if hasattr(node, clade_key) and getattr(node, clade_key):
-            color_face = faces.RectFace(width=20, height=20, fgcolor='black', bgcolor='black')
+            color_face = faces.RectFace(width=WIDTH, height=WIDTH, fgcolor='black', bgcolor='black')
         else:
-            color_face = faces.RectFace(width=20, height=20, fgcolor='white', bgcolor='white')
+            color_face = faces.RectFace(width=WIDTH, height=WIDTH, fgcolor='white', bgcolor='white')
         node.add_face(color_face, column=column_offset, position='aligned')
         column_offset += 1
 
