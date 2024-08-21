@@ -70,7 +70,7 @@ def find_crassvirales_clades(tree, threshold):
     clades = []
     for node in tree.traverse("postorder"):
         crassvirales_proteins, total_proteins, crassvirales_protein_names, \
-        non_crassvirales_protein_names, all_protein_names = count_crassvirales_proteins(node)
+            non_crassvirales_protein_names, all_protein_names = count_crassvirales_proteins(node)
         if total_proteins > 0:
             ratio = crassvirales_proteins / total_proteins
             if ratio >= threshold:
@@ -84,7 +84,7 @@ def save_clade_statistics(tree, cluster_name, output_file):
     results = []
     for node in tree.traverse("postorder"):
         crassvirales_proteins, total_proteins, crassvirales_protein_names, \
-        non_crassvirales_protein_names, all_protein_names = count_crassvirales_proteins(node)
+            non_crassvirales_protein_names, all_protein_names = count_crassvirales_proteins(node)
         if total_proteins > 0:
             ratio = round((crassvirales_proteins / total_proteins) * 100, 2)
             results.append([
@@ -110,7 +110,7 @@ def find_biggest_clade(tree, cluster_name, thresholds, output_file):
         if clades:
             biggest_clade = max(clades, key=lambda x: x[2])  # Find clade with the most members
             node, ratio, total_proteins, crassvirales_proteins, crassvirales_protein_names, \
-            non_crassvirales_protein_names, all_protein_names = biggest_clade
+                non_crassvirales_protein_names, all_protein_names = biggest_clade
             results.append([
                 f"Clade_{node.name}", round(threshold * 100, 2), node.name, cluster_name,
                 crassvirales_proteins, total_proteins, round(ratio * 100, 2),
