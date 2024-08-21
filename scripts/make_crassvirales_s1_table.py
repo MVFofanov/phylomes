@@ -2,13 +2,15 @@ import csv
 from typing import Dict, List
 
 # Define file paths
-crassus_file = "/mnt/c/crassvirales/phylomes/crassus_phylome/crassus_results.tsv"
-iphop_genome_file = "/mnt/c/crassvirales/phylomes/iphop_phylome_crassphages/Host_prediction_to_genome_m90.csv"
-iphop_genus_file = "/mnt/c/crassvirales/phylomes/iphop_phylome_crassphages/Host_prediction_to_genus_m90.csv"
-checkv_file = "/mnt/c/crassvirales/phylomes/Dani_results/0_checkv_completeness.txt"
-supplem_tables_dir = "/mnt/c/crassvirales/phylomes/supplementary_tables"
-crassphages_taxonomy_dani = "/mnt/c/crassvirales/phylomes/Dani_results/crassphages_taxonomy_terL_and_new.txt"
-genomad_virus_summary_file = "/mnt/c/crassvirales/phylomes/all_genomes_crassphages_dani_summary/all_genomes_crassphages_dani_virus_summary.tsv"
+phylomes = '/mnt/c/crassvirales/phylomes'
+crassus_file = f"{phylomes}/crassus_phylome/crassus_results.tsv"
+iphop_genome_file = f"{phylomes}/iphop_phylome_crassphages/Host_prediction_to_genome_m90.csv"
+iphop_genus_file = f"{phylomes}/iphop_phylome_crassphages/Host_prediction_to_genus_m90.csv"
+checkv_file = f"{phylomes}/Dani_results/0_checkv_completeness.txt"
+supplem_tables_dir = f"{phylomes}/supplementary_tables"
+crassphages_taxonomy_dani = f"{phylomes}/Dani_results/crassphages_taxonomy_terL_and_new.txt"
+genomad_virus_summary_file = f"{phylomes}/all_genomes_crassphages_dani_summary/" \
+                             f"all_genomes_crassphages_dani_virus_summary.tsv"
 output_file_name = f'{supplem_tables_dir}/phylome_taxonomy_s1.txt'
 
 
