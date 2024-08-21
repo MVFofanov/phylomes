@@ -21,7 +21,8 @@ def layout(node: Tree, align_labels: bool = False, align_boxes: bool = False) ->
 
         # Add the Crassvirales ratio and the total number of members in the clade
         if hasattr(node, 'ratio_crass_to_total') and hasattr(node, 'total_proteins'):
-            ratio_face = TextFace(f"Crassvirales ratio: {node.ratio_crass_to_total * 100:.2f}%", fgcolor='blue', fsize=18)
+            ratio_face = TextFace(f"Crassvirales ratio: {node.ratio_crass_to_total * 100:.2f}%",
+                                  fgcolor='blue', fsize=18)
             total_proteins_face = TextFace(f"Total members: {node.total_proteins}", fgcolor='green', fsize=18)
             node.add_face(ratio_face, column=0, position='branch-right')
             node.add_face(total_proteins_face, column=0, position='branch-right')

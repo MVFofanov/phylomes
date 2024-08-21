@@ -254,7 +254,7 @@ def assign_clade_features(tree: Tree, largest_clades: Dict[int, pd.DataFrame]) -
         for _, row in clades_df.iterrows():
             # print(f'{threshold=}')
             # print(f'{row=}')
-            node_name = row['node_name']
+            # node_name = row['node_name']
             # print(f'{node_name=}')
             all_members = row['all_members'].split(', ')
             # print(f'{all_members=}')
