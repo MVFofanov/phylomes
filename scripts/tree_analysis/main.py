@@ -105,7 +105,8 @@ def main() -> None:
 
             end_time_cluster_rooting = perf_counter()
             elapsed_time_cluster_rooting = end_time_cluster_rooting - start_time_cluster_rooting
-            elapsed_time_cluster_rooting_message = f"Total execution time for the {tree_type} {cluster_name} cluster: " \
+            elapsed_time_cluster_rooting_message = f"Total execution time for the " \
+                                                   f"{tree_type} {cluster_name} cluster: " \
                                                    f"{elapsed_time_cluster_rooting:.2f} seconds"
 
             logging.info(elapsed_time_cluster_rooting_message)

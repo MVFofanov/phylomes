@@ -38,8 +38,9 @@ def merge_phylome_taxonomy(phylome_summary_path, taxonomy_path, output_path):
 
 if __name__ == "__main__":
     # Example usage
-    phylome_summary_path = '/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/2_trees_leaves/phylome_summary/phylome_summary_crassvirales.tsv'
+    deni_results = '/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales'
+    phylome_summary_path = f'{deni_results}/2_trees_leaves/phylome_summary/phylome_summary_crassvirales.tsv'
     taxonomy_path = '/mnt/c/crassvirales/phylomes/supplementary_tables/phylome_taxonomy_s1.txt'
-    output_path = '/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/2_trees_leaves/phylome_summary/phylome_summary_crassvirales_taxonomy.tsv'
+    output_path = f'{deni_results}/2_trees_leaves/phylome_summary/phylome_summary_crassvirales_taxonomy.tsv'
 
     merge_phylome_taxonomy(phylome_summary_path, taxonomy_path, output_path)

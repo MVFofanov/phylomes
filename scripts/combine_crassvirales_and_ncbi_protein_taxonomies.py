@@ -81,8 +81,10 @@ def process_and_merge_tables(summary_path, taxonomy_path, output_path):
 
 if __name__ == "__main__":
     # Example usage
-    summary_path = '/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/2_trees_leaves/phylome_summary/2_hits_summary_all_filtered_included_annotation.txt'
-    taxonomy_path = '/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/2_trees_leaves/phylome_summary/phylome_summary_crassvirales_taxonomy.tsv'
-    output_path = '/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/2_trees_leaves/phylome_summary/phylome_summary_crassvirales_and_ncbi_taxonomy.tsv'
+    phylome_summary = '/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/' \
+                      '2_trees_leaves/phylome_summary'
+    summary_path = f'{phylome_summary}/2_hits_summary_all_filtered_included_annotation.txt'
+    taxonomy_path = f'{phylome_summary}/phylome_summary_crassvirales_taxonomy.tsv'
+    output_path = f'{phylome_summary}/phylome_summary_crassvirales_and_ncbi_taxonomy.tsv'
 
     process_and_merge_tables(summary_path, taxonomy_path, output_path)

@@ -3,7 +3,7 @@ import os
 from typing import Dict
 
 import matplotlib.pyplot as plt
-import pandas as pd
+# import pandas as pd
 import seaborn as sns
 from colours import superkingdom_colors, phylum_colors, crassvirales_color
 

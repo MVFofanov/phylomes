@@ -136,7 +136,9 @@ def save_tree_plot(tree: Tree, output_path: str, align_labels: bool = False, ali
     ts = TreeStyle()
 
     if layout_fn is None:
-        layout_fn = lambda n: layout(n, align_labels, align_boxes)
+        def layout_fn(n):
+            return layout(n, align_labels, align_boxes)
+        # layout_fn = lambda n: layout(n, align_labels, align_boxes)
 
     ts.layout_fn = layout_fn
     ts.show_leaf_name = False

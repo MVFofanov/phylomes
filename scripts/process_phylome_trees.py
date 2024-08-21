@@ -46,8 +46,9 @@ def process_trees(input_directory, output_directory):
 
 if __name__ == "__main__":
     # Specify input and output directories
-    input_dir = '/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/2_trees/'
-    output_dir = '/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/2_trees_leaves/'
+    deni_results = '/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales'
+    input_dir = f'{deni_results}/2_trees/'
+    output_dir = f'{deni_results}/2_trees_leaves/'
 
     # Create the output directory if it doesn't exist
     os.makedirs(output_dir, exist_ok=True)

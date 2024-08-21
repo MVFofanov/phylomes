@@ -220,10 +220,10 @@ def count_clade_proteins(node: Tree) -> Dict[str, Any]:
     # Calculate ratios for specific bacterial phyla
     phyla_ratios = {}
     for phylum in phyla_counts:
-        phyla_ratios[f'ratio_{phylum}_to_bacterial'] = (phyla_counts[
-                                                            phylum] / bacterial_proteins) * 100 if bacterial_proteins > 0 else 0
-        phyla_ratios[f'ratio_{phylum}_to_total'] = (phyla_counts[
-                                                        phylum] / total_proteins) * 100 if total_proteins > 0 else 0
+        phyla_ratios[f'ratio_{phylum}_to_bacterial'] = \
+            (phyla_counts[phylum] / bacterial_proteins) * 100 if bacterial_proteins > 0 else 0
+        phyla_ratios[f'ratio_{phylum}_to_total'] = \
+            (phyla_counts[phylum] / total_proteins) * 100 if total_proteins > 0 else 0
 
     return {
         "crassvirales_proteins": crassvirales_proteins,
@@ -561,7 +561,9 @@ def save_tree_plot(tree: Tree, output_path: str, align_labels: bool = False, ali
     ts = TreeStyle()
 
     if layout_fn is None:
-        layout_fn = lambda n: layout(n, align_labels, align_boxes)
+        def layout_fn(n):
+            return layout(n, align_labels, align_boxes)
+        # layout_fn = lambda n: layout(n, align_labels, align_boxes)
 
     ts.layout_fn = layout_fn
     ts.show_leaf_name = False
@@ -612,7 +614,7 @@ def process_and_save_tree(tree_type: str, tree_path: str, annotations: pd.DataFr
     save_tree_plot(tree, output_paths['tree_plot'], align_labels=align_labels, align_boxes=align_boxes)
     save_clade_statistics(tree, extract_cluster_name(tree_path), output_paths['all_clades'])
 
-    all_clades_df = pd.read_csv(output_paths['all_clades'], sep='\t')
+    # all_clades_df = pd.read_csv(output_paths['all_clades'], sep='\t')
     save_biggest_non_intersecting_clades_by_thresholds(output_paths['all_clades'], output_paths['output_dir'])
 
 
@@ -828,7 +830,7 @@ def main() -> None:
     # cluster_names = "cl_s_283 cl_s_022 cl_s_377".split()
     cluster_names = ["cl_s_283"]
 
-    tree_types = ['rooted', 'unrooted', 'midpoint']
+    # tree_types = ['rooted', 'unrooted', 'midpoint']
 
     for cluster_name in cluster_names:
         wd, phylome_summary, cluster_name, trees_dir, annotation_path = setup_input_paths(cluster_name)

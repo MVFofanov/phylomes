@@ -1,5 +1,5 @@
 import os
-from pathlib import Path
+# from pathlib import Path
 import subprocess
 
 
@@ -64,21 +64,21 @@ def get_single_copy_per_genome_proteins(proteins_dir, leaves_dir,
 def download_ncbi_proteins():
     pass
 
+
 if __name__ == '__main__':
+    deni_results = '/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales'
     taxonomy_filename = '/mnt/c/crassvirales/phylomes/supplementary_tables/phylome_taxonomy_s1.txt'
-    taxonomy_genome_ids_filename = '/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/' \
-                                   '4_merged_ncbi_crassvirales/2_trees_leaves/phylome_taxonomy_s1_genome_ids.txt'
-    tree_leaves_dir = "/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/" \
-                      "2_trees_leaves/ids"
+    taxonomy_genome_ids_filename = f'{deni_results}/2_trees_leaves/phylome_taxonomy_s1_genome_ids.txt'
+    tree_leaves_dir = f'{deni_results}/2_trees_leaves/ids'
     tree_leaves_dir_all = f'{tree_leaves_dir}/all'
     tree_leaves_dir_crassvirales = f'{tree_leaves_dir}/crassvirales'
     tree_leaves_dir_ncbi = f'{tree_leaves_dir}/ncbi'
 
-    proteins_dir = '/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/0_faa'
-    proteins_output_dir = '/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/2_trees_leaves/proteins'
-    # proteins_crassvirales_dir = '/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/2_trees_leaves/proteins/crassvirales'
+    proteins_dir = f'{deni_results}/0_faa'
+    proteins_output_dir = f'{deni_results}/2_trees_leaves/proteins'
+    # proteins_crassvirales_dir = f'{deni_results}/2_trees_leaves/proteins/crassvirales'
 
-    leaves_dir = '/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/2_trees_leaves/ids'
+    leaves_dir = f'{deni_results}/2_trees_leaves/ids'
 
     # grep_genome_ids_vs_protein_ids(taxonomy_genome_ids_filename, tree_leaves_dir_all,
     #                                tree_leaves_dir_crassvirales, tree_leaves_dir_ncbi)

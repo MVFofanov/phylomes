@@ -82,8 +82,8 @@ def count_clade_proteins(node: Tree) -> Dict[str, Any]:
     # Calculate ratios for specific bacterial phyla
     phyla_ratios = {}
     for phylum in phyla_counts:
-        phyla_ratios[f'ratio_{phylum}_to_bacterial'] = (phyla_counts[
-                                                            phylum] / bacterial_proteins) * 100 if bacterial_proteins > 0 else 0
+        phyla_ratios[f'ratio_{phylum}_to_bacterial'] = \
+            (phyla_counts[phylum] / bacterial_proteins) * 100 if bacterial_proteins > 0 else 0
         phyla_ratios[f'ratio_{phylum}_to_total'] = (phyla_counts[
                                                         phylum] / total_proteins) * 100 if total_proteins > 0 else 0
 

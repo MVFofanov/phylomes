@@ -1,4 +1,4 @@
-import csv
+# import csv
 from os import walk
 
 mrca_taxa_dir = "/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/4_MRCAs_taxa"

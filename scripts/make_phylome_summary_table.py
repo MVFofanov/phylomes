@@ -8,7 +8,8 @@ def read_table(file_path):
 
 # def count_lines(df, column_name):
 #     """Count the number of lines for each value in a column."""
-#     return df[column_name].value_counts().reset_index().rename(columns={column_name: 'cluster_name', 'index': column_name})
+#     return df[column_name].value_counts().reset_index().rename(columns={column_name: 'cluster_name',
+#                                                                                      'index': column_name})
 
 # def count_lines(df, column_name):
 #     """Count the number of lines for each value in a column."""
@@ -83,7 +84,8 @@ def add_taxonomy_information(basic_phylome_summary, taxonomy_file, output_dir):
 
     # print(set(taxonomy.values()))
 
-    # print(phylome_df['protein_id_crassvirales'].str.split(', ').apply(lambda x: ''.join(x.split('|')[:-2])).reset_index())
+    # print(phylome_df['protein_id_crassvirales'].str.split(', ')
+    #                                            .apply(lambda x: ''.join(x.split('|')[:-2])).reset_index())
     # genome_ids = phylome_df['protein_id_crassvirales'].str.split(', ').apply(
     #    lambda x: [element.split('|')[:-2] for element in x])
     # (genome_ids[:5])
@@ -149,11 +151,12 @@ def add_taxonomy_information(basic_phylome_summary, taxonomy_file, output_dir):
 
 def add_functions_information(hylome_summary_taxonomy, phylome_summary_functions,
                               functions_yutin, functions_pfam):
-    taxonomy_df = pd.read_csv(hylome_summary_taxonomy, sep='\t')
-    functions_df = pd.read_csv(phylome_summary_functions, sep='\t')
+    # taxonomy_df = pd.read_csv(hylome_summary_taxonomy, sep='\t')
+    # functions_df = pd.read_csv(phylome_summary_functions, sep='\t')
 
-    yutin_df = pd.read_csv(functions_yutin, sep='\t')
-    pfam_df = pd.read_csv(functions_pfam, sep='\t')
+    # yutin_df = pd.read_csv(functions_yutin, sep='\t')
+    # pfam_df = pd.read_csv(functions_pfam, sep='\t')
+    pass
 
 
 def join_phylome_summary_taxonomy_and_separate_cls_tables(table1_path, table2_path, join_column, output_path):
@@ -178,16 +181,17 @@ def join_phylome_summary_taxonomy_and_separate_cls_tables(table1_path, table2_pa
 
 def main():
     # File paths
-    file1_path = '/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/2_trees_leaves/ids/crassvirales_ids_full_with_cluster_names.txt'
-    file2_path = '/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/2_trees_leaves/ids/ncbi_ids_full_with_cluster_names.txt'
+    deni_results = '/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales'
+    # file1_path = f'{deni_results}/2_trees_leaves/ids/crassvirales_ids_full_with_cluster_names.txt'
+    # file2_path = f'{deni_results}/2_trees_leaves/ids/ncbi_ids_full_with_cluster_names.txt'
 
-    output_dir = '/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/2_trees_leaves/phylome_summary'
+    # output_dir = f'{deni_results}/2_trees_leaves/phylome_summary'
 
-    taxonomy_file = '/mnt/c/crassvirales/phylomes/supplementary_tables/phylome_taxonomy_s1.txt'
+    # taxonomy_file = '/mnt/c/crassvirales/phylomes/supplementary_tables/phylome_taxonomy_s1.txt'
     #
     # make_basic_phylome_summary(file1_path, file2_path, output_dir)
     #
-    basic_phylome_summary = f'{output_dir}/phylome_summary.tsv'
+    # basic_phylome_summary = f'{output_dir}/phylome_summary.tsv'
     phylome_summary_taxonomy = f'{output_dir}/phylome_summary_with_taxonomy.tsv'
     #
     # add_taxonomy_information(basic_phylome_summary, taxonomy_file, output_dir)
@@ -203,8 +207,8 @@ def main():
     #                           functions_yutin, functions_pfam)
     separate_cls_path = "/mnt/c/crassvirales/phylomes/Dani_results/separate_cls.txt"
 
-    phylome_summary_with_taxonomy_and_type_path = "/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/" \
-                                                  "2_trees_leaves/phylome_summary/phylome_summary_with_taxonomy_and_type.tsv"
+    # phylome_summary_with_taxonomy_and_type_path = f"{deni_results}/2_trees_leaves/phylome_summary/" \
+    #                                               f"phylome_summary_with_taxonomy_and_type.tsv"
     join_column = "CL"
 
     join_phylome_summary_taxonomy_and_separate_cls_tables(separate_cls_path, phylome_summary_taxonomy,

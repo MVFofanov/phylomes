@@ -51,7 +51,8 @@ def count_crassvirales_proteins(node):
         else:
             non_crassvirales_protein_names.append(leaf.name)
 
-    return crassvirales_proteins, total_proteins, crassvirales_protein_names, non_crassvirales_protein_names, all_protein_names
+    return crassvirales_proteins, total_proteins, crassvirales_protein_names,\
+           non_crassvirales_protein_names, all_protein_names
 
 
 def assign_unique_ids(tree):
@@ -67,8 +68,8 @@ def find_crassvirales_clades(tree, threshold):
     """Find clades with Crassvirales ratio above the specified threshold."""
     clades = []
     for node in tree.traverse("postorder"):
-        crassvirales_proteins, total_proteins, crassvirales_protein_names, non_crassvirales_protein_names, all_protein_names = count_crassvirales_proteins(
-            node)
+        crassvirales_proteins, total_proteins, crassvirales_protein_names,\
+        non_crassvirales_protein_names, all_protein_names = count_crassvirales_proteins(node)
         if total_proteins > 0:
             ratio = crassvirales_proteins / total_proteins
             if ratio >= threshold:
@@ -81,8 +82,8 @@ def save_clade_statistics(tree, cluster_name, output_file):
     """Save statistics for all nodes to a file."""
     results = []
     for node in tree.traverse("postorder"):
-        crassvirales_proteins, total_proteins, crassvirales_protein_names, non_crassvirales_protein_names, all_protein_names = count_crassvirales_proteins(
-            node)
+        crassvirales_proteins, total_proteins, crassvirales_protein_names,\
+        non_crassvirales_protein_names, all_protein_names = count_crassvirales_proteins(node)
         if total_proteins > 0:
             ratio = round((crassvirales_proteins / total_proteins) * 100, 2)
             results.append([
@@ -107,7 +108,8 @@ def find_biggest_clade(tree, cluster_name, thresholds, output_file):
         clades = find_crassvirales_clades(tree, threshold)
         if clades:
             biggest_clade = max(clades, key=lambda x: x[2])  # Find clade with the most members
-            node, ratio, total_proteins, crassvirales_proteins, crassvirales_protein_names, non_crassvirales_protein_names, all_protein_names = biggest_clade
+            node, ratio, total_proteins, crassvirales_proteins, crassvirales_protein_names,\
+            non_crassvirales_protein_names, all_protein_names = biggest_clade
             results.append([
                 f"Clade_{node.name}", round(threshold * 100, 2), node.name, cluster_name,
                 crassvirales_proteins, total_proteins, round(ratio * 100, 2),
@@ -235,10 +237,12 @@ def extract_cluster_name(tree_path):
 
 
 def main():
-    wd = '/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/2_trees_leaves/phylome_summary'
+    deni_results = '/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales'
+    wd = f'{deni_results}/2_trees_leaves/phylome_summary'
+    trees_dir = '/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/2_trees'
 
     annotation_path = f'{wd}/phylome_summary_crassvirales_and_ncbi_taxonomy.tsv'
-    tree_path = '/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/2_trees/cl_s_701_ncbi_trimmed.nw'
+    tree_path = f'{trees_dir}/cl_s_701_ncbi_trimmed.nw'
     tree_plot_output_path = f'{wd}/tree_analysis_test/annotated_tree.png'
     unrooted_tree_plot_output_path = f'{wd}/tree_analysis_test/unrooted_tree.png'
     midpoint_tree_plot_output_path = f'{wd}/tree_analysis_test/midpoint_tree.png'

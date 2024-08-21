@@ -173,8 +173,9 @@ def process_tables(first_table_path, second_table_path, output_table_path):
     phylome_unmatched = unmatched_df[unmatched_df['source'] == 'phylome'].copy()
     phylome_unmatched = phylome_unmatched.apply(lambda row: {
         **taxonomy_line_to_dict(
-            f"Viruses;Duplodnaviria;Heunggongvirae;Uroviricota;Caudoviricetes;{row['order']};{row['family']};{row['subfamily']};{row['genus']}"),
-        'Protein_ID': row['protein_id']
+            "Viruses;Duplodnaviria;Heunggongvirae;Uroviricota;Caudoviricetes;"
+            f"{row['order']};{row['family']};{row['subfamily']};{row['genus']}"),
+            'Protein_ID': row['protein_id']
     }, axis=1)
     phylome_unmatched_df = pd.DataFrame(phylome_unmatched.tolist())
 
@@ -227,8 +228,10 @@ if __name__ == "__main__":
     # taxonomy_lines = (
     #     "Bacteria;Thermotogota;Thermotogae;Thermotogales;Thermotogaceae;Thermotoga",
     #     "other sequences;artificial sequences",
-    #     "Eukaryota;Metazoa;Chordata;Craniata;Vertebrata;Euteleostomi;Mammalia;Eutheria;Euarchontoglires;Primates;Haplorrhini;Catarrhini;Hominidae;Homo",
-    #     "Viruses;Duplodnaviria;Heunggongvirae;Uroviricota;Caudoviricetes;Crassvirales;Steigviridae;Asinivirinae;Akihdevirus;Akihdevirus balticus",
+    #     "Eukaryota;Metazoa;Chordata;Craniata;Vertebrata;Euteleostomi;Mammalia;Eutheria;Euarchontoglires;Primates;"
+    #     "Haplorrhini;Catarrhini;Hominidae;Homo",
+    #     "Viruses;Duplodnaviria;Heunggongvirae;Uroviricota;Caudoviricetes;Crassvirales;Steigviridae;Asinivirinae;"
+    #     "Akihdevirus;Akihdevirus balticus",
     #     "Archaea;Euryarchaeota;Stenosarchaea group;Candidatus Methanofastidiosa;Methanofastidiosum",
     #     "Unclassified",
     #     "unclassified"

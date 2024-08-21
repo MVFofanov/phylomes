@@ -30,7 +30,7 @@ def create_genome_cluster_matrix(file_path, output_path):
 
     # Get unique genome IDs and cluster names
     print(df['genome_id_crassvirales']).split(', ')
-    unique_genome_ids = list(set(','.join(df['genome_id_crassvirales']).split(', ')))
+    # unique_genome_ids = list(set(','.join(df['genome_id_crassvirales']).split(', ')))
     # print(unique_genome_ids)
     # unique_cluster_names = df['cluster_name'].unique()
     #
@@ -97,9 +97,10 @@ def process_phylome_tables(taxonomy_file_path, phylome_summary_path, output_clus
 
 
 if __name__ == "__main__":
-    file1_path = '/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/2_trees_leaves/ids/crassvirales_ids_full_with_cluster_names.txt'
+    deni_results = '/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales'
+    file1_path = f'{deni_results}/2_trees_leaves/ids/crassvirales_ids_full_with_cluster_names.txt'
 
-    output_dir = '/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/2_trees_leaves/phylome_summary'
+    output_dir = f'{deni_results}/2_trees_leaves/phylome_summary'
 
     taxonomy_file = '/mnt/c/crassvirales/phylomes/supplementary_tables/phylome_taxonomy_s1.txt'
 
