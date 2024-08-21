@@ -153,14 +153,14 @@ def count_clade_proteins(node: Tree) -> Dict[str, Any]:
     other_proteins = 0
 
     # Initialize counts and lists for specific bacterial phyla
-    phyla_counts = {
+    phyla_counts: Dict[str, int] = {
         'Bacteroidetes': 0,
         'Actinobacteria': 0,
         'Bacillota': 0,
         'Proteobacteria': 0,
         'Other': 0
     }
-    phyla_protein_names = {
+    phyla_protein_names: Dict[str, List[str]] = {
         'Bacteroidetes': [],
         'Actinobacteria': [],
         'Bacillota': [],
