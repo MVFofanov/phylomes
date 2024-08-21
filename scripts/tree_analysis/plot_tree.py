@@ -167,9 +167,9 @@ def save_tree_plot(tree: Tree, output_path: str, align_labels: bool = False, ali
     add_legend(ts)
     print_node_features(tree)
 
-    png_output_path = f"{output_path}.png"
-    tree.render(png_output_path, tree_style=ts, dpi=1500)
-    logging.info(f"Tree plot saved to {png_output_path}")
+    # png_output_path = f"{output_path}.png"
+    # tree.render(png_output_path, tree_style=ts, dpi=1500)
+    # logging.info(f"Tree plot saved to {png_output_path}")
 
     pdf_output_path = f"{output_path}.pdf"
     tree.render(pdf_output_path, tree_style=ts, dpi=1500)
