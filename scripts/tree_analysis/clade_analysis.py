@@ -252,12 +252,33 @@ def assign_clade_features(tree: Tree, largest_clades: Dict[int, pd.DataFrame]) -
     """Assign clade features to each node for thresholds 0-100%."""
     for threshold, clades_df in largest_clades.items():
         for _, row in clades_df.iterrows():
+            # print(f'{threshold=}')
+            # print(f'{row=}')
             node_name = row['node_name']
-            matching_nodes = tree.search_nodes(name=node_name)
-            if matching_nodes:
-                node = matching_nodes[0]
-                node.add_feature(f'clade_{threshold}', True)
-                logging.debug(f"Assigned clade_{threshold} as True to node {node.name}")
+            # print(f'{node_name=}')
+            all_members = row['all_members'].split(', ')
+            # print(f'{all_members=}')
+            for member in all_members:
+                # print(f'{member=}')
+                matching_nodes = tree.search_nodes(name=member)
+                # print(f'{matching_nodes=}')
+                if matching_nodes:
+                    node = matching_nodes[0]
+                    node.add_feature(f'clade_{threshold}', True)
+                    # print(f'{node=}')
+                    # print(f'{node.features=}')
+                    # print(f'{node.clade_0=}')
+                    logging.debug(f"Assigned clade_{threshold} as True to node {node.name}")
+        #             break
+        #         break
+        #     break
+        # break
+
+            # matching_nodes = tree.search_nodes(name=node_name)
+            # if matching_nodes:
+            #     node = matching_nodes[0]
+            #     node.add_feature(f'clade_{threshold}', True)
+            #     logging.debug(f"Assigned clade_{threshold} as True to node {node.name}")
 
     # Set False for clades that do not belong to any largest non-intersecting clades
     for node in tree.traverse():

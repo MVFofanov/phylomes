@@ -21,8 +21,7 @@ def layout(node: Tree, align_labels: bool = False, align_boxes: bool = False) ->
 
         # Add the Crassvirales ratio and the total number of members in the clade
         if hasattr(node, 'ratio_crass_to_total') and hasattr(node, 'total_proteins'):
-            ratio_face = TextFace(f"Crassvirales ratio: {node.ratio_crass_to_total * 100:.2f}%", fgcolor='blue',
-                                  fsize=18)
+            ratio_face = TextFace(f"Crassvirales ratio: {node.ratio_crass_to_total * 100:.2f}%", fgcolor='blue', fsize=18)
             total_proteins_face = TextFace(f"Total members: {node.total_proteins}", fgcolor='green', fsize=18)
             node.add_face(ratio_face, column=0, position='branch-right')
             node.add_face(total_proteins_face, column=0, position='branch-right')
@@ -37,33 +36,47 @@ def layout(node: Tree, align_labels: bool = False, align_boxes: bool = False) ->
         color = source_colors.get(source, 'gray')
         color_face = faces.RectFace(width=20, height=20, fgcolor=color, bgcolor=color)
         node.add_face(color_face, column=column_offset, position=box_position)
+        column_offset += 1
 
     if 'superkingdom' in node.features:
         superkingdom = node.superkingdom
         color = superkingdom_colors.get(superkingdom, superkingdom_colors['Other'])
         color_face = faces.RectFace(width=20, height=20, fgcolor=color, bgcolor=color)
-        node.add_face(color_face, column=column_offset + 1, position=box_position)
+        node.add_face(color_face, column=column_offset, position=box_position)
+        column_offset += 1
 
     if 'phylum' in node.features:
         phylum = node.phylum
         color = phylum_colors.get(phylum, 'gray')
         color_face = faces.RectFace(width=20, height=20, fgcolor=color, bgcolor=color)
-        node.add_face(color_face, column=column_offset + 2, position=box_position)
+        node.add_face(color_face, column=column_offset, position=box_position)
+        column_offset += 1
 
     if 'order' in node.features:
         order = node.order
         color = crassvirales_color if order == 'Crassvirales' else 'gray'
         color_face = faces.RectFace(width=20, height=20, fgcolor=color, bgcolor=color)
-        node.add_face(color_face, column=column_offset + 3, position=box_position)
+        node.add_face(color_face, column=column_offset, position=box_position)
+        column_offset += 1
 
-    # Add black/white boxes for clade features
+    # Add a space before the black/white boxes
+    spacer_face = TextFace("  ")  # Add some space
+    node.add_face(spacer_face, column=column_offset, position='aligned')
+    column_offset += 1
+
+    # Add black/white boxes for clade features for each threshold
     for i, threshold in enumerate(range(0, 101, 10)):
         clade_key = f'clade_{threshold}'
         if hasattr(node, clade_key) and getattr(node, clade_key):
             color_face = faces.RectFace(width=20, height=20, fgcolor='black', bgcolor='black')
         else:
             color_face = faces.RectFace(width=20, height=20, fgcolor='white', bgcolor='white')
-        node.add_face(color_face, column=column_offset + 4 + i, position='aligned')
+        node.add_face(color_face, column=column_offset, position='aligned')
+        column_offset += 1
+
+    # Add a space after the black/white boxes (optional, if needed for additional annotations)
+    spacer_face_end = TextFace("  ")  # Add some space
+    node.add_face(spacer_face_end, column=column_offset, position='aligned')
 
 
 def add_legend(ts: TreeStyle) -> None:
