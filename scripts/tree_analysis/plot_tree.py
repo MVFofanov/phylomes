@@ -14,8 +14,15 @@ matplotlib.use('Agg')  # Force matplotlib to use a non-interactive backend
 def layout(node: Tree, align_labels: bool = False, align_boxes: bool = False) -> None:
     label_position = 'aligned' if align_labels else 'branch-right'
     if not hasattr(node, 'label_added') or not node.label_added:
+        # Add the node name
         name_face = TextFace(node.name, fgcolor='black', fsize=20)
         node.add_face(name_face, column=0, position=label_position)
+
+        # Add the Crassvirales ratio
+        if hasattr(node, 'ratio_crass_to_total'):
+            ratio_face = TextFace(f"Crassvirales ratio: {node.ratio_crass_to_total * 100:.2f}", fgcolor='blue', fsize=18)
+            node.add_face(ratio_face, column=0, position='branch-right')
+
         node.label_added = True
 
     box_position = 'aligned' if align_boxes else 'branch-right'
@@ -44,12 +51,6 @@ def layout(node: Tree, align_labels: bool = False, align_boxes: bool = False) ->
         color = crassvirales_color if order == 'Crassvirales' else 'gray'
         color_face = faces.RectFace(width=20, height=20, fgcolor=color, bgcolor=color)
         node.add_face(color_face, column=column_offset + 3, position=box_position)
-
-    # Adjust the column offset for the new clade annotation boxes
-    # for i in range(0, 101, 10):
-    #     color = "black" if getattr(node, f'clade_{i}', False) else "white"
-    #     clade_face = faces.RectFace(width=20, height=20, fgcolor=color, bgcolor=color)
-    #     node.add_face(clade_face, column=column_offset + 4 + (i // 10), position='aligned')
 
     # Add black/white boxes for clade features
     for i, threshold in enumerate(range(0, 101, 10)):
