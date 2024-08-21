@@ -181,7 +181,7 @@ def join_phylome_summary_taxonomy_and_separate_cls_tables(table1_path, table2_pa
 
 def main():
     # File paths
-    deni_results = '/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales'
+    # deni_results = '/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales'
     # file1_path = f'{deni_results}/2_trees_leaves/ids/crassvirales_ids_full_with_cluster_names.txt'
     # file2_path = f'{deni_results}/2_trees_leaves/ids/ncbi_ids_full_with_cluster_names.txt'
 
@@ -192,7 +192,7 @@ def main():
     # make_basic_phylome_summary(file1_path, file2_path, output_dir)
     #
     # basic_phylome_summary = f'{output_dir}/phylome_summary.tsv'
-    phylome_summary_taxonomy = f'{output_dir}/phylome_summary_with_taxonomy.tsv'
+    # phylome_summary_taxonomy = f'{output_dir}/phylome_summary_with_taxonomy.tsv'
     #
     # add_taxonomy_information(basic_phylome_summary, taxonomy_file, output_dir)
 
@@ -205,14 +205,15 @@ def main():
     #
     # add_functions_information(phylome_summary_taxonomy, phylome_summary_functions,
     #                           functions_yutin, functions_pfam)
-    separate_cls_path = "/mnt/c/crassvirales/phylomes/Dani_results/separate_cls.txt"
+    # separate_cls_path = "/mnt/c/crassvirales/phylomes/Dani_results/separate_cls.txt"
 
     # phylome_summary_with_taxonomy_and_type_path = f"{deni_results}/2_trees_leaves/phylome_summary/" \
     #                                               f"phylome_summary_with_taxonomy_and_type.tsv"
-    join_column = "CL"
+    # join_column = "CL"
 
-    join_phylome_summary_taxonomy_and_separate_cls_tables(separate_cls_path, phylome_summary_taxonomy,
-                                                          join_column, phylome_summary_with_taxonomy_and_type_path)
+    # join_phylome_summary_taxonomy_and_separate_cls_tables(separate_cls_path, phylome_summary_taxonomy,
+    #                                                       join_column, phylome_summary_with_taxonomy_and_type_path)
+    pass
 
 
 if __name__ == "__main__":

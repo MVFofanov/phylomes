@@ -51,7 +51,7 @@ def count_crassvirales_proteins(node):
         else:
             non_crassvirales_protein_names.append(leaf.name)
 
-    return crassvirales_proteins, total_proteins, crassvirales_protein_names,\
+    return crassvirales_proteins, total_proteins, crassvirales_protein_names, \
            non_crassvirales_protein_names, all_protein_names
 
 
@@ -68,7 +68,7 @@ def find_crassvirales_clades(tree, threshold):
     """Find clades with Crassvirales ratio above the specified threshold."""
     clades = []
     for node in tree.traverse("postorder"):
-        crassvirales_proteins, total_proteins, crassvirales_protein_names,\
+        crassvirales_proteins, total_proteins, crassvirales_protein_names, \
         non_crassvirales_protein_names, all_protein_names = count_crassvirales_proteins(node)
         if total_proteins > 0:
             ratio = crassvirales_proteins / total_proteins
@@ -82,7 +82,7 @@ def save_clade_statistics(tree, cluster_name, output_file):
     """Save statistics for all nodes to a file."""
     results = []
     for node in tree.traverse("postorder"):
-        crassvirales_proteins, total_proteins, crassvirales_protein_names,\
+        crassvirales_proteins, total_proteins, crassvirales_protein_names, \
         non_crassvirales_protein_names, all_protein_names = count_crassvirales_proteins(node)
         if total_proteins > 0:
             ratio = round((crassvirales_proteins / total_proteins) * 100, 2)
@@ -108,7 +108,7 @@ def find_biggest_clade(tree, cluster_name, thresholds, output_file):
         clades = find_crassvirales_clades(tree, threshold)
         if clades:
             biggest_clade = max(clades, key=lambda x: x[2])  # Find clade with the most members
-            node, ratio, total_proteins, crassvirales_proteins, crassvirales_protein_names,\
+            node, ratio, total_proteins, crassvirales_proteins, crassvirales_protein_names, \
             non_crassvirales_protein_names, all_protein_names = biggest_clade
             results.append([
                 f"Clade_{node.name}", round(threshold * 100, 2), node.name, cluster_name,

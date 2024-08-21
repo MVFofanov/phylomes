@@ -174,9 +174,8 @@ def process_tables(first_table_path, second_table_path, output_table_path):
     phylome_unmatched = phylome_unmatched.apply(lambda row: {
         **taxonomy_line_to_dict(
             "Viruses;Duplodnaviria;Heunggongvirae;Uroviricota;Caudoviricetes;"
-            f"{row['order']};{row['family']};{row['subfamily']};{row['genus']}"),
-            'Protein_ID': row['protein_id']
-    }, axis=1)
+            f"{row['order']};{row['family']};{row['subfamily']};{row['genus']}"), 'Protein_ID': row['protein_id']
+                                                            }, axis=1)
     phylome_unmatched_df = pd.DataFrame(phylome_unmatched.tolist())
 
     # Add missing columns to phylome_unmatched_df with None or appropriate values
