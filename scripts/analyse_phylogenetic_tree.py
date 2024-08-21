@@ -1,4 +1,5 @@
 import os
+
 import pandas as pd
 from ete3 import Tree, TreeStyle, TextFace, NodeStyle, faces
 
@@ -51,8 +52,8 @@ def count_crassvirales_proteins(node):
         else:
             non_crassvirales_protein_names.append(leaf.name)
 
-    return crassvirales_proteins, total_proteins, crassvirales_protein_names, \
-           non_crassvirales_protein_names, all_protein_names
+    return (crassvirales_proteins, total_proteins, crassvirales_protein_names,
+            non_crassvirales_protein_names, all_protein_names)
 
 
 def assign_unique_ids(tree):
