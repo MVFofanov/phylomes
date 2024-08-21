@@ -4,7 +4,9 @@ import os
 import matplotlib
 from colours import source_colors, superkingdom_colors, phylum_colors, crassvirales_color
 from ete3 import Tree, TreeStyle, TextFace, faces
+
 from tree_utils import print_node_features
+from utils import time_it
 
 # Set environment variable for non-interactive backend
 os.environ['QT_QPA_PLATFORM'] = 'offscreen'
@@ -151,6 +153,7 @@ def add_legend(ts: TreeStyle) -> None:
         ts.legend.add_face(text_face, column=1)
 
 
+@time_it("Saving tree plot")
 def save_tree_plot(tree: Tree, output_path: str, align_labels: bool = False, align_boxes: bool = False,
                    layout_fn=None) -> None:
     """Save the tree plot to a file."""

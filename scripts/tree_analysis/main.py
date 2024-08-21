@@ -50,6 +50,7 @@ def setup_output_paths(phylome_summary: str, cluster_name: str, tree_type: str) 
     }
 
 
+@time_it(message="process and save tree")
 def process_and_save_tree(tree_type: str, tree_path: str, annotations: pd.DataFrame,
                           output_paths: Dict[str, str],
                           align_labels: bool = False, align_boxes: bool = False,
@@ -91,6 +92,7 @@ def process_cluster(cluster_name: str, tree_types: list[str], wd: str, phylome_s
         process_tree_type(tree_type, cluster_name, trees_dir, annotations, phylome_summary)
 
 
+
 @time_it(message="{tree_type} cluster: {cluster_name}")
 def process_tree_type(tree_type: str, cluster_name: str, trees_dir: str, annotations: pd.DataFrame,
                       phylome_summary: str) -> None:
@@ -106,12 +108,15 @@ def process_tree_type(tree_type: str, cluster_name: str, trees_dir: str, annotat
 @time_it(message="Main processing function")
 def main() -> None:
     """Main function to process multiple clusters and tree types."""
-    cluster_names = ["cl_s_283"]
+    # cluster_names = ["cl_s_283"]
+    cluster_names = ["cl_s_283", "cl_s_022", "cl_s_377"]
     tree_types = ['rooted']
 
     for cluster_name in cluster_names:
         wd, phylome_summary, cluster_name, trees_dir, annotation_path = setup_input_paths(cluster_name)
         process_cluster(cluster_name, tree_types, wd, phylome_summary, trees_dir, annotation_path)
+        logging.info(f"Cluster {cluster_name} analysis completed")
+        print(f"Cluster {cluster_name} analysis completed")
 
 
 if __name__ == "__main__":

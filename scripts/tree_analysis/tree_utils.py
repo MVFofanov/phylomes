@@ -5,6 +5,8 @@ from typing import Dict, Any
 import pandas as pd
 from ete3 import Tree
 
+from utils import time_it
+
 
 def ensure_directory_exists(path: str) -> None:
     """Ensure the directory for the given path exists."""
@@ -26,6 +28,7 @@ def load_annotations(annotation_path: str) -> pd.DataFrame:
     return pd.read_csv(annotation_path, sep='\t')
 
 
+@time_it(message="annotate tree")
 def annotate_tree(tree: Tree, annotations: pd.DataFrame) -> None:
     """Annotate the tree with values from the annotation file, allowing for partial matches."""
     annotations = annotations.drop_duplicates(subset='protein_id')
@@ -57,6 +60,7 @@ def annotate_tree(tree: Tree, annotations: pd.DataFrame) -> None:
                 )
 
 
+# @time_it(message="assign unique ids")
 def assign_unique_ids(tree: Tree) -> None:
     """Assign unique IDs to unnamed nodes."""
     unique_id = 1

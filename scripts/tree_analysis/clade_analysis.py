@@ -5,6 +5,8 @@ from typing import Dict, List, Any
 import pandas as pd
 from ete3 import Tree
 
+from utils import time_it
+
 
 def count_clade_proteins(node: Tree) -> Dict[str, Any]:
     """Count Crassvirales, bacterial, and viral proteins, and calculate their ratios by specific bacterial phyla."""
@@ -126,6 +128,7 @@ def count_clade_proteins(node: Tree) -> Dict[str, Any]:
     }
 
 
+# @time_it("Save clade statistics")
 def save_clade_statistics(tree: Tree, cluster_name: str, output_file: str) -> None:
     """Save statistics for all nodes to a file."""
     results = []
@@ -210,6 +213,7 @@ def find_largest_non_intersecting_clades(df: pd.DataFrame, threshold: float) -> 
     return selected_df
 
 
+# @time_it("Save biggest non intersecting clades by thresholds")
 def save_biggest_non_intersecting_clades_by_thresholds(all_clades_path: str, output_dir: str) -> None:
     """Save the largest non-intersecting clades filtered by Crassvirales ratio thresholds."""
     df = pd.read_csv(all_clades_path, sep='\t')
@@ -223,6 +227,7 @@ def save_biggest_non_intersecting_clades_by_thresholds(all_clades_path: str, out
         # print(f"Saved biggest non-intersecting clades for {threshold}% threshold to {output_path}")
 
 
+# @time_it("Concatenate clades tables")
 def concatenate_clades_tables(output_dir: str, output_file: str) -> None:
     """Concatenate biggest_non_intersecting_clades tables for all thresholds and save to a new output table."""
     all_data = []
@@ -248,6 +253,7 @@ def concatenate_clades_tables(output_dir: str, output_file: str) -> None:
         # print(f"No data found to concatenate in {output_dir}")
 
 
+@time_it("Assign clade features")
 def assign_clade_features(tree: Tree, largest_clades: Dict[int, pd.DataFrame]) -> None:
     """Assign clade features to each node for thresholds 0-100%."""
     for threshold, clades_df in largest_clades.items():

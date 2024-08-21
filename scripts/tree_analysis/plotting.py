@@ -1,11 +1,12 @@
-import pandas as pd
 import os
 from typing import Dict
 
 import matplotlib.pyplot as plt
-# import pandas as pd
+import pandas as pd
 import seaborn as sns
+
 from colours import superkingdom_colors, phylum_colors, crassvirales_color
+from utils import time_it
 
 
 def plot_bacterial_ratios_vs_threshold(concatenated_table: str, output_dir: str, tree_type: str) -> None:
@@ -136,6 +137,7 @@ def plot_number_of_members_boxplot(concatenated_table: str, output_dir: str, tre
     plt.close()
 
 
+@time_it("Generating plots")
 def generate_plots(output_paths: Dict[str, str], tree_type: str) -> None:
     """Generate and save all relevant plots.
 
