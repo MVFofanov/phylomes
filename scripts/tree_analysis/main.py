@@ -137,7 +137,7 @@ def process_tree_type(tree_type: str, cluster_name: str, trees_dir: str, annotat
     tree_path = f'{trees_dir}/{cluster_name}_ncbi_trimmed.nw'
     output_paths = setup_output_paths(phylome_summary, cluster_name, tree_type)
     process_and_save_tree(tree_type, tree_path, annotations, output_paths, align_labels=False, align_boxes=True,
-                          logging_level=logging.DEBUG)
+                          logging_level=logging.INFO)
     concatenate_clades_tables(output_paths['output_dir'], output_paths['biggest_non_intersecting_clades_all'])
     generate_plots(output_paths, tree_type)
 
