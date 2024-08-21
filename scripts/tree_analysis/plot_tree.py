@@ -13,15 +13,19 @@ matplotlib.use('Agg')  # Force matplotlib to use a non-interactive backend
 
 def layout(node: Tree, align_labels: bool = False, align_boxes: bool = False) -> None:
     label_position = 'aligned' if align_labels else 'branch-right'
+
     if not hasattr(node, 'label_added') or not node.label_added:
         # Add the node name
         name_face = TextFace(node.name, fgcolor='black', fsize=20)
         node.add_face(name_face, column=0, position=label_position)
 
-        # Add the Crassvirales ratio
-        if hasattr(node, 'ratio_crass_to_total'):
-            ratio_face = TextFace(f"Crassvirales ratio: {node.ratio_crass_to_total * 100:.2f}", fgcolor='blue', fsize=18)
+        # Add the Crassvirales ratio and the total number of members in the clade
+        if hasattr(node, 'ratio_crass_to_total') and hasattr(node, 'total_proteins'):
+            ratio_face = TextFace(f"Crassvirales ratio: {node.ratio_crass_to_total * 100:.2f}%", fgcolor='blue',
+                                  fsize=18)
+            total_proteins_face = TextFace(f"Total members: {node.total_proteins}", fgcolor='green', fsize=18)
             node.add_face(ratio_face, column=0, position='branch-right')
+            node.add_face(total_proteins_face, column=0, position='branch-right')
 
         node.label_added = True
 

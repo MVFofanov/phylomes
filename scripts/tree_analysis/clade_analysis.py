@@ -80,8 +80,18 @@ def count_clade_proteins(node: Tree) -> Dict[str, Any]:
     ratio_other_to_total = other_proteins / total_proteins if total_proteins > 0 else 0
     ratio_crass_to_total = crassvirales_proteins / total_proteins if total_proteins > 0 else 0
 
-    # Add the ratio_crass_to_total to the node's features
-    node.add_features(ratio_crass_to_total=ratio_crass_to_total)
+    # # Add the ratio_crass_to_total to the node's features
+    # node.add_features(ratio_crass_to_total=ratio_crass_to_total)
+
+    # node.add_features(
+    #     ratio_crass_to_total=clade_info["ratio_crass_to_total"],
+    #     total_proteins=clade_info["total_proteins"]
+    # )
+
+    node.add_features(
+        ratio_crass_to_total=ratio_crass_to_total,
+        total_proteins=total_proteins
+    )
 
     # Calculate ratios for specific bacterial phyla
     phyla_ratios = {}
