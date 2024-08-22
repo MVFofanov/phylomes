@@ -1,5 +1,4 @@
 import logging
-import matplotlib
 import os
 
 
@@ -12,6 +11,7 @@ def setup_logging(output_dir: str, logging_level=logging.INFO) -> None:
         format='%(asctime)s - %(levelname)s - %(message)s',
         filemode='w'
     )
+
 
 # Set logging level for matplotlib to WARNING or higher
 logging.getLogger('matplotlib').setLevel(logging.WARNING)

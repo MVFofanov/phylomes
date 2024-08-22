@@ -12,17 +12,17 @@ superkingdom_colors: Dict[str, str] = {
 }
 
 phylum_colors: Dict[str, str] = {
-    'Actinobacteria': '#b2df8a',  # Light Green
-    'Actinomycetota': '#b2df8a',  # Light Green (same as Actinobacteria)
+    'Actinobacteria': '#ffff99',  # Light Green
+    'Actinomycetota': '#ffff99',  # Light Green (same as Actinobacteria)
     'Bacillota': '#a6cee3',  # Light Blue
     'Bacteroidetes': '#ff7f00',  # Orange
     'Bacteroidota': '#ff7f00',  # Orange (same as Bacteroidetes)
-    'Cyanobacteriota': '#ffff99',  # Light Yellow
+    # 'Cyanobacteriota': '#ffff99',  # Light Yellow
     'Firmicutes': '#a6cee3',  # Light Blue (same as Bacillota)
     'Proteobacteria': '#b15928',  # Brown
     'Pseudomonadota': '#b15928',  # Brown (same as Proteobacteria)
     'Uroviricota': '#cab2d6',  # Light Purple
-    'Other': 'gray'  # Default color for any other phyla
+    'Other': '#b2df8a'  # Default color for any other phyla
 }
 
 crassvirales_color = '#fb9a99'  # Light Pink

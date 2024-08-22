@@ -1,12 +1,13 @@
 import logging
 import os
 # from time import perf_counter
-from typing import Any, Callable, Dict, Optional, Tuple
+from typing import Dict, Tuple
 
 import pandas as pd
 
 from clade_analysis import assign_clade_features, save_clade_statistics, \
     concatenate_clades_tables, save_biggest_non_intersecting_clades_by_thresholds
+from cluster_comparison import compare_clusters
 from logging_utils import setup_logging
 from plot_tree import save_tree_plot
 from plotting import generate_plots
@@ -92,7 +93,6 @@ def process_cluster(cluster_name: str, tree_types: list[str], wd: str, phylome_s
         process_tree_type(tree_type, cluster_name, trees_dir, annotations, phylome_summary)
 
 
-
 @time_it(message="{tree_type} cluster: {cluster_name}")
 def process_tree_type(tree_type: str, cluster_name: str, trees_dir: str, annotations: pd.DataFrame,
                       phylome_summary: str) -> None:
@@ -109,14 +109,23 @@ def process_tree_type(tree_type: str, cluster_name: str, trees_dir: str, annotat
 def main() -> None:
     """Main function to process multiple clusters and tree types."""
     # cluster_names = ["cl_s_283"]
-    cluster_names = ["cl_s_283", "cl_s_022", "cl_s_377"]
+    # cluster_names = ["cl_s_283", "cl_s_022", "cl_s_377"]
+    cluster_names = "cl_s_283 cl_s_004 cl_s_022 cl_s_066 cl_s_136 cl_s_340 cl_s_377".split()
     tree_types = ['rooted']
 
-    for cluster_name in cluster_names:
-        wd, phylome_summary, cluster_name, trees_dir, annotation_path = setup_input_paths(cluster_name)
-        process_cluster(cluster_name, tree_types, wd, phylome_summary, trees_dir, annotation_path)
-        logging.info(f"Cluster {cluster_name} analysis completed")
-        print(f"Cluster {cluster_name} analysis completed")
+    # for cluster_name in cluster_names:
+    #     wd, phylome_summary, cluster_name, trees_dir, annotation_path = setup_input_paths(cluster_name)
+    #     process_cluster(cluster_name, tree_types, wd, phylome_summary, trees_dir, annotation_path)
+    #     logging.info(f"Cluster {cluster_name} analysis completed")
+    #     print(f"Cluster {cluster_name} analysis completed")
+
+    wd = '/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/2_trees_leaves'
+    phylome_summary = f'{wd}/phylome_summary'
+    base_output_dir = f'{phylome_summary}/tree_analysis_test'
+    # Add this line to compare clusters after main processing
+    compare_clusters(cluster_names=cluster_names,
+                     base_output_dir=base_output_dir,
+                     tree_types=tree_types)
 
 
 if __name__ == "__main__":

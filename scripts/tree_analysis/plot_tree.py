@@ -14,7 +14,7 @@ matplotlib.use('Agg')  # Force matplotlib to use a non-interactive backend
 
 
 def layout(node: Tree, align_labels: bool = False, align_boxes: bool = False) -> None:
-    WIDTH = HEIGHT = 20
+    WIDTH = 20
 
     label_position = 'aligned' if align_labels else 'branch-right'
 
