@@ -17,38 +17,30 @@ from utils import time_it
 # Set environment variable for non-interactive backend
 os.environ['QT_QPA_PLATFORM'] = 'offscreen'
 
-
-def setup_input_paths(cluster_name: str) -> Tuple[str, str, str, str, str]:
+def setup_paths(wd: str) -> Dict[str, str]:
     """Setup and return all necessary paths."""
-    wd = '/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/2_trees_leaves'
-    phylome_summary = f'{wd}/phylome_summary'
-    # cluster_name = "cl_s_283"
-    trees_dir = '/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/2_trees'
-    annotation_path = f'{wd}/phylome_summary_with_current_taxonomy_and_phylome.txt'
-    return wd, phylome_summary, cluster_name, trees_dir, annotation_path
-
-
-def setup_output_paths(phylome_summary: str, cluster_name: str, tree_type: str) -> Dict[str, str]:
-    """Setup and return output paths for each tree type."""
-    base_output_dir = f'{phylome_summary}/tree_analysis_test/{cluster_name}/{tree_type}'
-    ensure_directory_exists(base_output_dir)
-    tree_plot_output_path = f'{base_output_dir}/annotated_tree'
-    annotated_tree_path = f'{base_output_dir}/annotated_tree.nw'
-    clade_output_file = f'{base_output_dir}/clade_statistics.tsv'
-    all_clades_output_file = f'{base_output_dir}/all_clades.tsv'
-    largest_non_intersecting_clades = f'{base_output_dir}/largest_non_intersecting_clades.tsv'
-    biggest_non_intersecting_clades_all = f"{base_output_dir}/biggest_non_intersecting_clades_all.tsv"
-
-    return {
-        'output_dir': base_output_dir,
-        'tree_plot': tree_plot_output_path,
-        'annotated_tree': annotated_tree_path,
-        'clade_statistics': clade_output_file,
-        'all_clades': all_clades_output_file,
-        'largest_non_intersecting_clades': largest_non_intersecting_clades,
-        'biggest_non_intersecting_clades_all': biggest_non_intersecting_clades_all
+    paths = {
+        'wd': wd,
+        'phylome_summary': f'{wd}/phylome_summary',
+        'trees_dir': f'{wd}/../2_trees',
+        'annotation_path': f'{wd}/phylome_summary_with_current_taxonomy_and_phylome.txt',
+        'base_output_dir': f'{wd}/phylome_summary/tree_analysis_test'
     }
+    return paths
 
+def setup_output_paths(base_output_dir: str, cluster_name: str, tree_type: str) -> Dict[str, str]:
+    """Setup and return output paths for each tree type."""
+    output_dir = f'{base_output_dir}/{cluster_name}/{tree_type}'
+    ensure_directory_exists(output_dir)
+    return {
+        'output_dir': output_dir,
+        'tree_plot': f'{output_dir}/annotated_tree',
+        'annotated_tree': f'{output_dir}/annotated_tree.nw',
+        'clade_statistics': f'{output_dir}/clade_statistics.tsv',
+        'all_clades': f'{output_dir}/all_clades.tsv',
+        'largest_non_intersecting_clades': f'{output_dir}/largest_non_intersecting_clades.tsv',
+        'biggest_non_intersecting_clades_all': f'{output_dir}/biggest_non_intersecting_clades_all.tsv'
+    }
 
 @time_it(message="process and save tree")
 def process_and_save_tree(tree_type: str, tree_path: str, annotations: pd.DataFrame,
@@ -81,58 +73,50 @@ def process_and_save_tree(tree_type: str, tree_path: str, annotations: pd.DataFr
     save_biggest_non_intersecting_clades_by_thresholds(output_paths['all_clades'], output_paths['output_dir'])
     save_tree_plot(tree, output_paths['tree_plot'], align_labels=align_labels, align_boxes=align_boxes)
 
-
 @time_it(message="cluster: {cluster_name}")
-def process_cluster(cluster_name: str, tree_types: list[str], wd: str, phylome_summary: str,
-                    trees_dir: str, annotation_path: str) -> None:
+def process_cluster(cluster_name: str, tree_types: list[str], paths: Dict[str, str]) -> None:
     """Process a single cluster by generating trees, saving outputs, and creating plots."""
-    annotations = load_annotations(annotation_path)
+    annotations = load_annotations(paths['annotation_path'])
 
     for tree_type in tree_types:
-        process_tree_type(tree_type, cluster_name, trees_dir, annotations, phylome_summary)
-
+        process_tree_type(tree_type, cluster_name, paths['trees_dir'], annotations, paths['base_output_dir'])
 
 @time_it(message="{tree_type} cluster: {cluster_name}")
 def process_tree_type(tree_type: str, cluster_name: str, trees_dir: str, annotations: pd.DataFrame,
-                      phylome_summary: str) -> None:
+                      base_output_dir: str) -> None:
     """Process a specific tree type for a given cluster."""
     tree_path = f'{trees_dir}/{cluster_name}_ncbi_trimmed.nw'
-    output_paths = setup_output_paths(phylome_summary, cluster_name, tree_type)
+    output_paths = setup_output_paths(base_output_dir, cluster_name, tree_type)
     process_and_save_tree(tree_type, tree_path, annotations, output_paths, align_labels=False, align_boxes=True,
                           logging_level=logging.INFO)
     concatenate_clades_tables(output_paths['output_dir'], output_paths['biggest_non_intersecting_clades_all'])
     generate_plots(output_paths, tree_type)
 
-
 @time_it(message="Main processing function")
-def main(cluster_names: list[str], tree_types: list[str], wd: str, phylome_summary: str) -> None:
+def main(cluster_names: list[str], tree_types: list[str], paths: Dict[str, str]) -> None:
     """Main function to process multiple clusters and tree types."""
-
     for cluster_name in cluster_names:
-        process_cluster(cluster_name, tree_types, wd, phylome_summary, f'{wd}/../2_trees',
-                        f'{wd}/phylome_summary_with_current_taxonomy_and_phylome.txt')
+        process_cluster(cluster_name, tree_types, paths)
         logging.info(f"Cluster {cluster_name} analysis completed")
         print(f"Cluster {cluster_name} analysis completed")
 
-    base_output_dir = f'{phylome_summary}/tree_analysis_test'
     compare_clusters(cluster_names=cluster_names,
-                     base_output_dir=base_output_dir,
+                     base_output_dir=paths['base_output_dir'],
                      tree_types=tree_types)
-
 
 if __name__ == "__main__":
     import matplotlib
 
     matplotlib.use('Agg')  # Force matplotlib to use a non-interactive backend
 
+    # Configurable parameters
     cluster_names = ["cl_s_283"]
     # cluster_names = ["cl_s_283", "cl_s_022", "cl_s_377"]
     # cluster_names = "cl_s_283 cl_s_004 cl_s_022 cl_s_066 cl_s_136 cl_s_340 cl_s_377".split()
     tree_types = ['rooted']
 
     wd = '/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/2_trees_leaves'
-    phylome_summary = f'{wd}/phylome_summary'
+    paths = setup_paths(wd)
 
     # Run the main function with the configured parameters
-    main(cluster_names=cluster_names, tree_types=tree_types,
-         wd=wd, phylome_summary=phylome_summary)
+    main(cluster_names=cluster_names, tree_types=tree_types, paths=paths)
