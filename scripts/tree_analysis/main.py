@@ -1,6 +1,5 @@
 import logging
 import os
-# from time import perf_counter
 from typing import Dict, Tuple
 
 import pandas as pd
@@ -106,23 +105,16 @@ def process_tree_type(tree_type: str, cluster_name: str, trees_dir: str, annotat
 
 
 @time_it(message="Main processing function")
-def main() -> None:
+def main(cluster_names: list[str], tree_types: list[str], wd: str, phylome_summary: str) -> None:
     """Main function to process multiple clusters and tree types."""
-    # cluster_names = ["cl_s_283"]
-    # cluster_names = ["cl_s_283", "cl_s_022", "cl_s_377"]
-    cluster_names = "cl_s_283 cl_s_004 cl_s_022 cl_s_066 cl_s_136 cl_s_340 cl_s_377".split()
-    tree_types = ['rooted']
 
-    # for cluster_name in cluster_names:
-    #     wd, phylome_summary, cluster_name, trees_dir, annotation_path = setup_input_paths(cluster_name)
-    #     process_cluster(cluster_name, tree_types, wd, phylome_summary, trees_dir, annotation_path)
-    #     logging.info(f"Cluster {cluster_name} analysis completed")
-    #     print(f"Cluster {cluster_name} analysis completed")
+    for cluster_name in cluster_names:
+        process_cluster(cluster_name, tree_types, wd, phylome_summary, f'{wd}/../2_trees',
+                        f'{wd}/phylome_summary_with_current_taxonomy_and_phylome.txt')
+        logging.info(f"Cluster {cluster_name} analysis completed")
+        print(f"Cluster {cluster_name} analysis completed")
 
-    wd = '/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/2_trees_leaves'
-    phylome_summary = f'{wd}/phylome_summary'
     base_output_dir = f'{phylome_summary}/tree_analysis_test'
-    # Add this line to compare clusters after main processing
     compare_clusters(cluster_names=cluster_names,
                      base_output_dir=base_output_dir,
                      tree_types=tree_types)
@@ -132,4 +124,15 @@ if __name__ == "__main__":
     import matplotlib
 
     matplotlib.use('Agg')  # Force matplotlib to use a non-interactive backend
-    main()
+
+    cluster_names = ["cl_s_283"]
+    # cluster_names = ["cl_s_283", "cl_s_022", "cl_s_377"]
+    # cluster_names = "cl_s_283 cl_s_004 cl_s_022 cl_s_066 cl_s_136 cl_s_340 cl_s_377".split()
+    tree_types = ['rooted']
+
+    wd = '/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/2_trees_leaves'
+    phylome_summary = f'{wd}/phylome_summary'
+
+    # Run the main function with the configured parameters
+    main(cluster_names=cluster_names, tree_types=tree_types,
+         wd=wd, phylome_summary=phylome_summary)
