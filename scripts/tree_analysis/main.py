@@ -110,17 +110,17 @@ def concatenate_logs(output_dir: str, final_log_file: str, cluster_names: list[s
     """Concatenate all individual cluster logs into a final log file, in the order of cluster_names."""
 
     # List to hold the log files in the correct order
-    ordered_log_files: List[str] = []
+    ordered_log_files = []
 
     # Find log files for each cluster in the order specified in cluster_names
     for cluster_name in cluster_names:
         # Construct the expected log file path for each cluster
         log_file_pattern = os.path.join(output_dir, '**', f'{cluster_name}_log_tree_analysis.log')
-        log_file: List[str] = glob.glob(log_file_pattern, recursive=True)
+        log_files = glob.glob(log_file_pattern, recursive=True)
 
         # Ensure only one log file is found for each cluster
-        if log_file:
-            ordered_log_files.append(log_file[0])
+        if log_files:
+            ordered_log_files.append(log_files[0])  # Select the first matching log file
         else:
             logging.warning(f"Log file for cluster {cluster_name} not found.")
 
