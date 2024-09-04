@@ -52,7 +52,8 @@ def process_and_save_tree(tree_type: str, tree_path: str, annotations: pd.DataFr
                           align_labels: bool = False, align_boxes: bool = False,
                           logging_level=logging.INFO) -> None:
     cluster_name = extract_cluster_name(tree_path)  # Get the cluster name from the tree path
-    setup_logging(output_paths['output_dir'], cluster_name, logging_level=logging_level)  # Reset logging for each cluster
+    setup_logging(output_paths['output_dir'], cluster_name,
+                  logging_level=logging_level)  # Reset logging for each cluster
 
     tree = load_tree(tree_path)
     annotate_tree(tree, annotations)

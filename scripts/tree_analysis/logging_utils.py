@@ -31,4 +31,3 @@ def setup_logging(output_dir: str, cluster_name: str, logging_level=logging.INFO
     formatter = logging.Formatter(log_format)
     console.setFormatter(formatter)
     logger.addHandler(console)
-
