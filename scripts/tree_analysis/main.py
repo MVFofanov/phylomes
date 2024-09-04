@@ -19,6 +19,13 @@ from utils import time_it
 os.environ['QT_QPA_PLATFORM'] = 'offscreen'
 
 
+def read_cluster_names_from_file(file_path: str) -> list[str]:
+    """Reads cluster names from a text file, one cluster name per line."""
+    with open(file_path, 'r') as f:
+        cluster_names = [line.strip() for line in f.readlines() if line.strip()]
+    return cluster_names
+
+
 def setup_paths(wd: str) -> Dict[str, str]:
     """Setup and return all necessary paths."""
     paths = {
@@ -27,7 +34,8 @@ def setup_paths(wd: str) -> Dict[str, str]:
         'trees_dir': f'{wd}/../2_trees',
         'annotation_path': f'{wd}/phylome_summary_with_current_taxonomy_and_phylome.txt',
         'annotation_path_id': f'{wd}/phylome_summary_with_current_taxonomy_and_phylome_id.txt',
-        'base_output_dir': f'{wd}/phylome_summary/tree_analysis_test'
+        'base_output_dir': f'{wd}/phylome_summary/tree_analysis_test',
+        'config_dir': f'{wd}/phylome_summary/tree_analysis_test/config'
     }
     return paths
 
@@ -151,7 +159,7 @@ def concatenate_logs(output_dir: str, final_log_file: str, cluster_names: list[s
 
 
 @time_it(message="Main processing function")
-def main(cluster_names: list[str], tree_types: list[str], paths: Dict[str, str]) -> None:
+def main(cluster_names_file: str, tree_types: list[str], paths: Dict[str, str]) -> None:
     """Main function to process multiple clusters and tree types."""
     # Load the annotation file into a dictionary before processing clusters
     annotations = load_annotations(paths['annotation_path_id'])
@@ -161,6 +169,9 @@ def main(cluster_names: list[str], tree_types: list[str], paths: Dict[str, str])
         annotations = annotations.drop_duplicates(subset='protein_id')
 
     annotation_dict = annotations.set_index('protein_id').to_dict('index')
+
+    # Read cluster names from the file
+    cluster_names = read_cluster_names_from_file(cluster_names_file)
 
     for cluster_name in cluster_names:
         process_cluster(cluster_name, tree_types, paths, annotation_dict)
@@ -182,14 +193,14 @@ if __name__ == "__main__":
     matplotlib.use('Agg')  # Force matplotlib to use a non-interactive backend
 
     # Configurable parameters
-    # cluster_names = ["cl_s_283"]
-    cluster_names = ["cl_s_283", "cl_s_022"]
-    # cluster_names = ["cl_s_283", "cl_s_022", "cl_s_377"]
-    # cluster_names = "cl_s_283 cl_s_004 cl_s_022 cl_s_066 cl_s_136 cl_s_340 cl_s_377".split()
-    tree_types = ['rooted']
-
     wd = '/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/2_trees_leaves'
     paths = setup_paths(wd)
 
+    # Define the path to the cluster names file
+    cluster_names_file = f'{paths["config_dir"]}/clusters.txt'
+
+    # Tree types to process
+    tree_types = ['rooted']
+
     # Run the main function with the configured parameters
-    main(cluster_names=cluster_names, tree_types=tree_types, paths=paths)
+    main(cluster_names_file=cluster_names_file, tree_types=tree_types, paths=paths)
