@@ -11,7 +11,7 @@ from cluster_comparison import compare_clusters
 from logging_utils import setup_logging
 from plot_tree import save_tree_plot
 from plotting import generate_plots
-from tree_utils import load_tree, load_annotations, annotate_tree, assign_unique_ids, \
+from tree_utils import load_tree, load_annotations, annotate_tree, annotate_tree_id, assign_unique_ids, \
     ensure_directory_exists, extract_cluster_name, root_tree_at_bacteria
 from utils import time_it
 
@@ -26,6 +26,7 @@ def setup_paths(wd: str) -> Dict[str, str]:
         'phylome_summary': f'{wd}/phylome_summary',
         'trees_dir': f'{wd}/../2_trees',
         'annotation_path': f'{wd}/phylome_summary_with_current_taxonomy_and_phylome.txt',
+        'annotation_path_id': f'{wd}/phylome_summary_with_current_taxonomy_and_phylome_id.txt',
         'base_output_dir': f'{wd}/phylome_summary/tree_analysis_test'
     }
     return paths
@@ -56,7 +57,8 @@ def process_and_save_tree(tree_type: str, tree_path: str, annotations: pd.DataFr
                   logging_level=logging_level)  # Reset logging for each cluster
 
     tree = load_tree(tree_path)
-    annotate_tree(tree, annotations)
+    # annotate_tree(tree, annotations)
+    annotate_tree_id(tree, annotations)
     assign_unique_ids(tree)
 
     if tree_type == 'rooted':
@@ -83,7 +85,8 @@ def process_and_save_tree(tree_type: str, tree_path: str, annotations: pd.DataFr
 @time_it(message="cluster: {cluster_name}")
 def process_cluster(cluster_name: str, tree_types: list[str], paths: Dict[str, str]) -> None:
     """Process a single cluster by generating trees, saving outputs, and creating plots."""
-    annotations = load_annotations(paths['annotation_path'])
+    # annotations = load_annotations(paths['annotation_path'])
+    annotations = load_annotations(paths['annotation_path_id'])
 
     for tree_type in tree_types:
         output_paths = setup_output_paths(paths['base_output_dir'], cluster_name, tree_type)

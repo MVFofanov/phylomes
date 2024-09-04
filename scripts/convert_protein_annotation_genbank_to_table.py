@@ -41,6 +41,39 @@ def extract_protein_annotations(input_file, output_file):
     print(f"Extraction complete! Data saved to {output_file}")
 
 
+def extract_protein_annotations_with_id(input_file, output_file):
+    """
+    Extracts protein annotations from a GenBank file using record.id and saves them to a text file.
+    """
+    with open(output_file, 'w') as outfile:
+        # Write the header
+        outfile.write("Protein_ID\tProtein_Length\tOrganism_Name\tTaxonomy_Line\tNucleotide_Sequence_Name\n")
+
+        # Parse the GenBank file
+        for record in SeqIO.parse(input_file, "genbank"):
+            # Extracting protein ID using record.id
+            protein_id = record.id
+
+            # Extracting nucleotide sequence name from DBSOURCE field
+            nucleotide_seq_name = "unknown"
+            dbsource = record.annotations.get("db_source", None)
+            if dbsource and "accession" in dbsource.lower():
+                # Extract accession number from DBSOURCE field
+                nucleotide_seq_name = dbsource.split("accession ")[-1].split()[0]
+
+            # Length of the protein
+            protein_length = len(record.seq)
+
+            # Organism name and taxonomy line
+            organism_name = record.annotations.get("organism", "unknown")
+            taxonomy_line = ";".join(record.annotations.get("taxonomy", []))
+
+            # Write the data to the output file
+            outfile.write(f"{protein_id}\t{protein_length}\t{organism_name}\t{taxonomy_line}\t{nucleotide_seq_name}\n")
+
+    print(f"Extraction using 'record.id' complete! Data saved to {output_file}")
+
+
 def taxonomy_line_to_dict(taxonomy_line):
     """
     Converts a taxonomy line into a dictionary with all possible taxonomic ranks.
@@ -219,7 +252,13 @@ if __name__ == "__main__":
     wd = "/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/2_trees_leaves"
 
     input_file = f"{wd}/phylome_summary_ncbi_ids_all_annotation.gb"
-    output_file = f"{wd}/phylome_summary_ncbi_ids_all_annotation.txt"
+    # output_file = f"{wd}/phylome_summary_ncbi_ids_all_annotation.txt"
+
+    output_file_id = f"{wd}/phylome_summary_ncbi_ids_all_annotation_id.txt"
+
+    # Output file using 'record.id'
+    # extract_protein_annotations_with_id(input_file, output_file_id)
+
     # extract_protein_annotations(input_file, output_file)
 
     # Example usage
@@ -240,15 +279,18 @@ if __name__ == "__main__":
     #     taxonomy_dict = taxonomy_line_to_dict(taxonomy)
     #     print(f'{taxonomy=}\n{taxonomy_dict=}\n')
 
-    input_file = output_file
-    output_file = f"{wd}/phylome_summary_with_current_taxonomy.txt"
-
+    # input_file = output_file
+    input_file = output_file_id
+    # output_file = f"{wd}/phylome_summary_with_current_taxonomy.txt"
+    output_file = f"{wd}/phylome_summary_with_current_taxonomy_id.txt"
+    #
     # Process the taxonomy table
-    # process_taxonomy_table(input_file, output_file)
-
+    process_taxonomy_table(input_file, output_file)
+    #
     first_table_path = f'{wd}/phylome_summary/phylome_summary_crassvirales_and_ncbi_taxonomy.tsv'
     second_table_path = output_file
-    output_table_path = f"{wd}/phylome_summary_with_current_taxonomy_and_phylome.txt"
-
-    # process_tables(first_table_path, second_table_path, output_table_path)
+    # output_table_path = f"{wd}/phylome_summary_with_current_taxonomy_and_phylome.txt"
+    output_table_path = f"{wd}/phylome_summary_with_current_taxonomy_and_phylome_id.txt"
+    #
+    process_tables(first_table_path, second_table_path, output_table_path)
     update_taxonomic_ranks(first_table_path, second_table_path, output_table_path)

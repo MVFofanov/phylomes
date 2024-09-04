@@ -60,6 +60,49 @@ def annotate_tree(tree: Tree, annotations: pd.DataFrame) -> None:
                 )
 
 
+@time_it(message="annotate tree")
+def annotate_tree_id(tree: Tree, annotations: pd.DataFrame) -> None:
+    """Annotate the tree with values from the annotation file, allowing for partial matches."""
+    annotations = annotations.drop_duplicates(subset='protein_id')
+    annotation_dict = annotations.set_index('protein_id').to_dict('index')
+    # updated_annotation_dict: Dict[str, Dict[str, Any]] = {}
+
+    # for node in tree.traverse():
+    #     if node.is_leaf():
+    #         leaf_label = node.name
+    #         for key in annotation_dict.keys():
+    #             if leaf_label.startswith(key):
+    #                 updated_annotation_dict[leaf_label] = annotation_dict[key]
+    #                 break
+
+    for node in tree.traverse():
+        if node.is_leaf():
+            protein_id = node.name
+            if protein_id in annotation_dict:
+                annotation = annotation_dict[protein_id]
+                node.add_features(
+                    source=annotation['source'],
+                    superkingdom=annotation['superkingdom'],
+                    phylum=annotation['phylum'],
+                    class_=annotation['class'],
+                    order=annotation['order'],
+                    family=annotation['family'],
+                    subfamily=annotation['subfamily'],
+                    genus=annotation['genus']
+                )
+            else:
+                node.add_features(
+                    source='unknown',
+                    superkingdom='unknown',
+                    phylum='unknown',
+                    class_='unknown',
+                    order='unknown',
+                    family='unknown',
+                    subfamily='unknown',
+                    genus='unknown'
+                )
+
+
 # @time_it(message="assign unique ids")
 def assign_unique_ids(tree: Tree) -> None:
     """Assign unique IDs to unnamed nodes."""
