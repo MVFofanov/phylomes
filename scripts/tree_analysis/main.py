@@ -48,17 +48,15 @@ def setup_output_paths(base_output_dir: str, cluster_name: str, tree_type: str) 
 
 
 @time_it(message="process and save tree")
-def process_and_save_tree(tree_type: str, tree_path: str, annotations: pd.DataFrame,
+def process_and_save_tree(tree_type: str, tree_path: str, annotation_dict: dict,
                           output_paths: Dict[str, str],
                           align_labels: bool = False, align_boxes: bool = False,
                           logging_level=logging.INFO) -> None:
     cluster_name = extract_cluster_name(tree_path)  # Get the cluster name from the tree path
-    setup_logging(output_paths['output_dir'], cluster_name,
-                  logging_level=logging_level)  # Reset logging for each cluster
+    setup_logging(output_paths['output_dir'], cluster_name, logging_level=logging_level)
 
     tree = load_tree(tree_path)
-    # annotate_tree(tree, annotations)
-    annotate_tree_id(tree, annotations)
+    annotate_tree_id(tree, annotation_dict)
     assign_unique_ids(tree)
 
     if tree_type == 'rooted':
@@ -83,10 +81,8 @@ def process_and_save_tree(tree_type: str, tree_path: str, annotations: pd.DataFr
 
 
 @time_it(message="cluster: {cluster_name}")
-def process_cluster(cluster_name: str, tree_types: list[str], paths: Dict[str, str]) -> None:
+def process_cluster(cluster_name: str, tree_types: list[str], paths: Dict[str, str], annotation_dict: dict) -> None:
     """Process a single cluster by generating trees, saving outputs, and creating plots."""
-    # annotations = load_annotations(paths['annotation_path'])
-    annotations = load_annotations(paths['annotation_path_id'])
 
     for tree_type in tree_types:
         output_paths = setup_output_paths(paths['base_output_dir'], cluster_name, tree_type)
@@ -94,16 +90,16 @@ def process_cluster(cluster_name: str, tree_types: list[str], paths: Dict[str, s
         # Set up logging for this specific cluster
         setup_logging(output_paths['output_dir'], cluster_name)
 
-        process_tree_type(tree_type, cluster_name, paths['trees_dir'], annotations, paths['base_output_dir'])
+        process_tree_type(tree_type, cluster_name, paths['trees_dir'], annotation_dict, paths['base_output_dir'])
 
 
 @time_it(message="{tree_type} cluster: {cluster_name}")
-def process_tree_type(tree_type: str, cluster_name: str, trees_dir: str, annotations: pd.DataFrame,
+def process_tree_type(tree_type: str, cluster_name: str, trees_dir: str, annotation_dict: dict,
                       base_output_dir: str) -> None:
     """Process a specific tree type for a given cluster."""
     tree_path = f'{trees_dir}/{cluster_name}_ncbi_trimmed.nw'
     output_paths = setup_output_paths(base_output_dir, cluster_name, tree_type)
-    process_and_save_tree(tree_type, tree_path, annotations, output_paths, align_labels=False, align_boxes=True,
+    process_and_save_tree(tree_type, tree_path, annotation_dict, output_paths, align_labels=False, align_boxes=True,
                           logging_level=logging.INFO)
     concatenate_clades_tables(output_paths['output_dir'], output_paths['biggest_non_intersecting_clades_all'])
     generate_plots(output_paths, tree_type)
@@ -157,8 +153,17 @@ def concatenate_logs(output_dir: str, final_log_file: str, cluster_names: list[s
 @time_it(message="Main processing function")
 def main(cluster_names: list[str], tree_types: list[str], paths: Dict[str, str]) -> None:
     """Main function to process multiple clusters and tree types."""
+    # Load the annotation file into a dictionary before processing clusters
+    annotations = load_annotations(paths['annotation_path_id'])
+
+    if annotations.duplicated(subset='protein_id').any():
+        print("Duplicate protein IDs found. Removing duplicates.")
+        annotations = annotations.drop_duplicates(subset='protein_id')
+
+    annotation_dict = annotations.set_index('protein_id').to_dict('index')
+
     for cluster_name in cluster_names:
-        process_cluster(cluster_name, tree_types, paths)
+        process_cluster(cluster_name, tree_types, paths, annotation_dict)
         logging.info(f"Cluster {cluster_name} analysis completed")
         print(f"Cluster {cluster_name} analysis completed")
 

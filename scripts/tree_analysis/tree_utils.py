@@ -61,19 +61,8 @@ def annotate_tree(tree: Tree, annotations: pd.DataFrame) -> None:
 
 
 @time_it(message="annotate tree")
-def annotate_tree_id(tree: Tree, annotations: pd.DataFrame) -> None:
-    """Annotate the tree with values from the annotation file, allowing for partial matches."""
-    annotations = annotations.drop_duplicates(subset='protein_id')
-    annotation_dict = annotations.set_index('protein_id').to_dict('index')
-    # updated_annotation_dict: Dict[str, Dict[str, Any]] = {}
-
-    # for node in tree.traverse():
-    #     if node.is_leaf():
-    #         leaf_label = node.name
-    #         for key in annotation_dict.keys():
-    #             if leaf_label.startswith(key):
-    #                 updated_annotation_dict[leaf_label] = annotation_dict[key]
-    #                 break
+def annotate_tree_id(tree: Tree, annotation_dict: dict) -> None:
+    """Annotate the tree using a pre-loaded annotation dictionary."""
 
     for node in tree.traverse():
         if node.is_leaf():
