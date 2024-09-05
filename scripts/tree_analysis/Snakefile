@@ -1,4 +1,4 @@
-configfile: "config.yaml"
+configfile: "/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/2_trees_leaves/phylome_summary/tree_analysis_test/config/config.yaml"
 
 import os
 from glob import glob
@@ -20,8 +20,8 @@ config_dir = config["input"]["config_dir"].format(wd=wd)
 clusters_file = config["input"]["clusters_file"].format(config_dir=config_dir)
 
 base_output_dir = config["output"]["base_output_dir"].format(wd=wd)
-output_dir = config["output"]["output_dir"].format(wd=wd)
-logs_dir = config["output"]["logs_dir"].format(output_dir=output_dir)
+output_dir = config["output"]["base_output_dir"].format(wd=wd)
+logs_dir = config["output"]["logs_dir"].format(base_output_dir=output_dir)
 
 # Read cluster names from the clusters.txt file
 with open(clusters_file) as f:
@@ -30,18 +30,21 @@ with open(clusters_file) as f:
 # Main rule to request all outputs
 rule all:
     input:
-        expand("{output_dir}/{cluster}/final_log_tree_analysis.log", output_dir=base_output_dir, cluster=cluster_names)
+        expand("{output_dir}/{cluster}/rooted/{cluster}_log_tree_analysis.log", output_dir=base_output_dir, cluster=cluster_names)
 
 # Rule for processing individual clusters
 rule process_cluster:
     input:
-        tree=f"{phylogenetic_trees_dir}/{{cluster}}_ncbi_trimmed.nw",
-        annotation=annotation_file_id
+        # tree=f"{phylogenetic_trees_dir}/{{cluster}}_ncbi_trimmed.nw",
+        config="/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/2_trees_leaves/phylome_summary/tree_analysis_test/config/config.yaml"
+        # cluster={cluster}
     output:
-        log_file=f"{base_output_dir}/{{cluster}}/final_log_tree_analysis.log"
+        log_file=f"{base_output_dir}/{{cluster}}/rooted/{{cluster}}_log_tree_analysis.log",
+        biggest_clades=f"{base_output_dir}/{{cluster}}/rooted/biggest_non_intersecting_clades_all.tsv",
+        tree=f"{base_output_dir}/{{cluster}}/rooted/annotated_tree.pdf"
     threads: 1
     shell:
         """
         mkdir -p {output_dir}/{wildcards.cluster}
-        python scripts/tree_analysis/main.py --config config.yaml --cluster {wildcards.cluster}
+        python3 /mnt/c/crassvirales/phylomes/scripts/tree_analysis/main.py --cluster {wildcards.cluster} --config {input.config}
         """
