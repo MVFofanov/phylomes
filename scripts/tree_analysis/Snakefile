@@ -30,14 +30,13 @@ with open(clusters_file) as f:
 # Main rule to request all outputs
 rule all:
     input:
-        expand("{output_dir}/{cluster}/rooted/{cluster}_log_tree_analysis.log", output_dir=base_output_dir, cluster=cluster_names)
+        expand(f"{base_output_dir}/{{cluster}}/rooted/{{cluster}}_log_tree_analysis.log", cluster=cluster_names),
+        f"{base_output_dir}/cluster_analysis/rooted/comparison_complete.log"
 
 # Rule for processing individual clusters
 rule process_cluster:
     input:
-        # tree=f"{phylogenetic_trees_dir}/{{cluster}}_ncbi_trimmed.nw",
         config="/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/2_trees_leaves/phylome_summary/tree_analysis_test/config/config.yaml"
-        # cluster={cluster}
     output:
         log_file=f"{base_output_dir}/{{cluster}}/rooted/{{cluster}}_log_tree_analysis.log",
         biggest_clades=f"{base_output_dir}/{{cluster}}/rooted/biggest_non_intersecting_clades_all.tsv",
@@ -47,4 +46,18 @@ rule process_cluster:
         """
         mkdir -p {output_dir}/{wildcards.cluster}
         python3 /mnt/c/crassvirales/phylomes/scripts/tree_analysis/main.py --cluster {wildcards.cluster} --config {input.config}
+        """
+
+# Rule for comparing clusters after processing all clusters
+rule compare_clusters:
+    input:
+        expand(f"{base_output_dir}/{{cluster}}/rooted/biggest_non_intersecting_clades_all.tsv", cluster=cluster_names),
+        config="/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/2_trees_leaves/phylome_summary/tree_analysis_test/config/config.yaml",
+        clusters_file=clusters_file
+    output:
+        final_log=f"{base_output_dir}/cluster_analysis/rooted/comparison_complete.log",
+        concatenated_clusters=f"{base_output_dir}/cluster_analysis/rooted/concatenated_clusters_data.tsv"
+    shell:
+        """
+        python3 /mnt/c/crassvirales/phylomes/scripts/tree_analysis/cluster_comparison.py --config {input.config} --clusters_file "{input.clusters_file}" > {output.final_log}
         """

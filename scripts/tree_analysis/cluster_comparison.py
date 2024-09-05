@@ -1,5 +1,7 @@
+import argparse
 import logging
 import os
+import yaml
 from typing import List
 
 import matplotlib.pyplot as plt
@@ -8,6 +10,41 @@ import seaborn as sns
 
 from colours import crassvirales_color, phylum_colors, superkingdom_colors
 from utils import time_it
+
+
+def format_paths(config: dict) -> dict:
+    """Format all paths in the config dictionary by replacing placeholders."""
+
+    # Ensure all necessary input paths are formatted
+    working_dir = config["input"]["deni_data"]
+    tree_leaves = config["input"]["tree_leaves"].format(deni_data=working_dir)
+    wd = config["input"]["wd"].format(tree_leaves=tree_leaves)
+    phylogenetic_trees_dir = config["input"]["phylogenetic_trees_dir"].format(deni_data=working_dir)
+    annotation_file = config["input"]["annotation_file"].format(tree_leaves=tree_leaves)
+    annotation_file_id = config["input"]["annotation_file_id"].format(tree_leaves=tree_leaves)
+    config_dir = config["input"]["config_dir"].format(wd=wd)
+    clusters_file = config["input"]["clusters_file"].format(config_dir=config_dir)
+
+    # Ensure all necessary output paths are formatted
+    base_output_dir = config["output"].get("base_output_dir", "").format(wd=wd)
+    # output_dir = config["output"].get("output_dir", "").format(wd=wd)
+    logs_dir = config["output"].get("logs_dir", "").format(base_output_dir=base_output_dir)
+
+    # Update the config with formatted paths
+    config["input"]["deni_data"] = working_dir
+    config["input"]["tree_leaves"] = tree_leaves
+    config["input"]["wd"] = wd
+    config["input"]["phylogenetic_trees_dir"] = phylogenetic_trees_dir
+    config["input"]["annotation_file"] = annotation_file
+    config["input"]["annotation_file_id"] = annotation_file_id
+    config["input"]["config_dir"] = config_dir
+    config["input"]["clusters_file"] = clusters_file
+
+    config["output"]["base_output_dir"] = base_output_dir
+    # config["output"]["output_dir"] = output_dir
+    config["output"]["logs_dir"] = logs_dir
+
+    return config
 
 
 # @time_it("Concatenating cluster data for {tree_type}")
@@ -184,3 +221,39 @@ def compare_clusters(cluster_names: List[str], base_output_dir: str, tree_types:
         except FileNotFoundError as e:
             print(e)
             logging.error(e)
+
+
+@time_it(message="Main processing function")
+def main(config_file: str, clusters_file: str) -> None:
+    # Load config YAML file
+    with open(config_file, 'r') as file:
+        config = yaml.safe_load(file)
+
+    # Format the paths in the config file
+    config = format_paths(config)
+
+    # Setup paths from config
+    # paths = setup_paths(config)
+
+    # Read cluster names from the clusters.txt file
+    with open(clusters_file) as f:
+        cluster_names = [line.strip() for line in f.readlines() if line.strip()]
+
+    # Compare clusters
+    compare_clusters(
+        cluster_names=cluster_names,
+        base_output_dir=config["output"]["base_output_dir"],
+        tree_types=["rooted"]
+    )
+
+
+if __name__ == "__main__":
+    import matplotlib
+    matplotlib.use('Agg')
+
+    parser = argparse.ArgumentParser(description="Run cluster comparison for protein clusters.")
+    parser.add_argument("-c", "--config", required=True, help="Path to the YAML configuration file.")
+    parser.add_argument("--clusters_file", required=True, help="Path to the file with protein clusters")
+    args = parser.parse_args()
+
+    main(config_file=args.config, clusters_file=args.clusters_file)
