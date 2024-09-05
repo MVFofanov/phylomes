@@ -185,8 +185,8 @@ def concatenate_logs(output_dir: str, final_log_file: str, cluster_names: list[s
 
 
 @time_it(message="Main processing function")
-def main(config_file: str) -> None:
-    """Main function to process multiple clusters and tree types."""
+def main(config_file: str, cluster_name: str) -> None:
+    """Main function to process a single cluster."""
     with open(config_file, 'r') as file:
         config = yaml.safe_load(file)
 
@@ -204,28 +204,27 @@ def main(config_file: str) -> None:
 
     annotation_dict = annotations.set_index('protein_id').to_dict('index')
 
-    cluster_names = read_cluster_names_from_file(paths['clusters_file'])
-
     tree_types = config.get('tree_types', ['rooted'])
 
-    for cluster_name in cluster_names:
-        process_cluster(cluster_name, tree_types, paths, annotation_dict)
-        logging.info(f"Cluster {cluster_name} analysis completed")
-        print(f"Cluster {cluster_name} analysis completed")
+    process_cluster(cluster_name, tree_types, paths, annotation_dict)
+    logging.info(f"Cluster {cluster_name} analysis completed")
 
-    compare_clusters(cluster_names=cluster_names, base_output_dir=paths['base_output_dir'], tree_types=tree_types)
 
-    final_log_file = os.path.join(paths['base_output_dir'], 'final_log_tree_analysis.log')
-    concatenate_logs(paths['base_output_dir'], final_log_file, cluster_names)
-    logging.info(f"Final log file created at {final_log_file}")
+    # final_log_file = os.path.join(paths['base_output_dir'], 'final_log_tree_analysis.log')
+    # concatenate_logs(paths['base_output_dir'], final_log_file, cluster_names)
+    # logging.info(f"Final log file created at {final_log_file}")
 
 
 if __name__ == "__main__":
     import matplotlib
     matplotlib.use('Agg')
 
-    parser = argparse.ArgumentParser(description="Run tree analysis for protein clusters.")
+    parser = argparse.ArgumentParser(description="Run tree analysis for a specific protein cluster.")
     parser.add_argument("-c", "--config", required=True, help="Path to the YAML configuration file.")
+    parser.add_argument("--cluster", required=True, help="Protein cluster name to process.")
     args = parser.parse_args()
 
-    main(config_file=args.config)
+    main(config_file=args.config, cluster_name=args.cluster)
+
+    # compare_clusters(cluster_names=cluster_names, base_output_dir=paths['base_output_dir'], tree_types=tree_types)
+
