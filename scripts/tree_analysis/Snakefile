@@ -1,0 +1,59 @@
+configfile: "config.yaml"
+
+import os
+from glob import glob
+import yaml
+
+# Load the configuration file
+with open("config.yaml") as file:
+    config = yaml.safe_load(file)
+
+# Directories and paths from the config
+working_dir = config["input"]["deni_data"]
+tree_leaves = config["input"]["tree_leaves"].format(deni_data=working_dir)
+wd = config["input"]["wd"].format(tree_leaves=tree_leaves)
+phylogenetic_trees_dir = config["input"]["phylogenetic_trees_dir"].format(deni_data=working_dir)
+annotation_file = config["input"]["annotation_file"].format(tree_leaves=tree_leaves)
+annotation_file_id = config["input"]["annotation_file_id"].format(tree_leaves=tree_leaves)
+config_dir = config["input"]["config_dir"].format(wd=wd)
+clusters_file = config["input"]["clusters_file"].format(config_dir=config_dir)
+
+base_output_dir = config["output"]["base_output_dir"].format(wd=wd)
+output_dir = config["output"]["output_dir"].format(wd=wd)
+logs_dir = config["output"]["logs_dir"].format(output_dir=output_dir)
+
+# Read cluster names from the clusters.txt file
+with open(clusters_file) as f:
+    cluster_names = [line.strip() for line in f.readlines() if line.strip()]
+
+# Main rule to request all outputs
+rule all:
+    input:
+        expand("{output_dir}/{cluster}/final_log_tree_analysis.log", output_dir=output_dir, cluster=cluster_names)
+
+# Rule for processing individual clusters
+rule process_cluster:
+    input:
+        tree="{phylogenetic_trees_dir}/{cluster}_ncbi_trimmed.nw",
+        annotation=annotation_file_id
+    output:
+        log_file="{output_dir}/{cluster}/final_log_tree_analysis.log"
+    threads: 2  # Set this to the number of threads you want for each cluster
+    resources:
+        mem_mb=24000  # Adjust the memory allocation as necessary
+    shell:
+        """
+        mkdir -p {output_dir}/{wildcards.cluster}
+        python scripts/tree_analysis/main.py --cluster {wildcards.cluster} --annotation {input.annotation} --tree {input.tree} --log {output.log_file}
+        """
+
+# Rule for concatenating logs after all clusters are processed
+# rule concatenate_logs:
+#     input:
+#         expand("{output_dir}/{cluster}/final_log_tree_analysis.log", output_dir=output_dir, cluster=cluster_names)
+#     output:
+#         final_log=os.path.join(logs_dir, "final_log_tree_analysis.log")
+#     shell:
+#         """
+#         python scripts/tree_analysis/logging_utils.py concatenate_logs --output_dir {output_dir} --final_log {output.final_log} --clusters {wildcards.cluster}
+#         """

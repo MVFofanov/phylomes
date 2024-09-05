@@ -1,17 +1,18 @@
+import argparse
 import glob
 import logging
 import os
+import yaml
 from typing import Dict
 
 import pandas as pd
-
 from clade_analysis import assign_clade_features, save_clade_statistics, \
     concatenate_clades_tables, save_biggest_non_intersecting_clades_by_thresholds
 from cluster_comparison import compare_clusters
 from logging_utils import setup_logging
 from plot_tree import save_tree_plot
 from plotting import generate_plots
-from tree_utils import load_tree, load_annotations, annotate_tree, annotate_tree_id, assign_unique_ids, \
+from tree_utils import load_tree, load_annotations, annotate_tree_id, assign_unique_ids, \
     ensure_directory_exists, extract_cluster_name, root_tree_at_bacteria
 from utils import time_it
 
@@ -26,16 +27,52 @@ def read_cluster_names_from_file(file_path: str) -> list[str]:
     return cluster_names
 
 
-def setup_paths(wd: str) -> Dict[str, str]:
-    """Setup and return all necessary paths."""
+def format_paths(config: dict) -> dict:
+    """Format all paths in the config dictionary by replacing placeholders."""
+
+    # Ensure all necessary input paths are formatted
+    working_dir = config["input"]["deni_data"]
+    tree_leaves = config["input"]["tree_leaves"].format(deni_data=working_dir)
+    wd = config["input"]["wd"].format(tree_leaves=tree_leaves)
+    phylogenetic_trees_dir = config["input"]["phylogenetic_trees_dir"].format(deni_data=working_dir)
+    annotation_file = config["input"]["annotation_file"].format(tree_leaves=tree_leaves)
+    annotation_file_id = config["input"]["annotation_file_id"].format(tree_leaves=tree_leaves)
+    config_dir = config["input"]["config_dir"].format(wd=wd)
+    clusters_file = config["input"]["clusters_file"].format(config_dir=config_dir)
+
+    # Ensure all necessary output paths are formatted
+    base_output_dir = config["output"].get("base_output_dir", "").format(wd=wd)
+    # output_dir = config["output"].get("output_dir", "").format(wd=wd)
+    logs_dir = config["output"].get("logs_dir", "").format(base_output_dir=base_output_dir)
+
+    # Update the config with formatted paths
+    config["input"]["deni_data"] = working_dir
+    config["input"]["tree_leaves"] = tree_leaves
+    config["input"]["wd"] = wd
+    config["input"]["phylogenetic_trees_dir"] = phylogenetic_trees_dir
+    config["input"]["annotation_file"] = annotation_file
+    config["input"]["annotation_file_id"] = annotation_file_id
+    config["input"]["config_dir"] = config_dir
+    config["input"]["clusters_file"] = clusters_file
+
+    config["output"]["base_output_dir"] = base_output_dir
+    # config["output"]["output_dir"] = output_dir
+    config["output"]["logs_dir"] = logs_dir
+
+    return config
+
+
+def setup_paths(config: Dict) -> Dict[str, str]:
+    """Setup and return all necessary paths from the configuration file."""
     paths = {
-        'wd': wd,
-        'phylome_summary': f'{wd}/phylome_summary',
-        'trees_dir': f'{wd}/../2_trees',
-        'annotation_path': f'{wd}/phylome_summary_with_current_taxonomy_and_phylome.txt',
-        'annotation_path_id': f'{wd}/phylome_summary_with_current_taxonomy_and_phylome_id.txt',
-        'base_output_dir': f'{wd}/phylome_summary/tree_analysis_test',
-        'config_dir': f'{wd}/phylome_summary/tree_analysis_test/config'
+        'wd': config['input']['wd'],
+        'phylome_summary': config['input']['tree_leaves'],
+        'trees_dir': config['input']['phylogenetic_trees_dir'],
+        'annotation_path': config['input']['annotation_file'],
+        'annotation_path_id': config['input']['annotation_file_id'],
+        'base_output_dir': config['output']['base_output_dir'],
+        'config_dir': config['input']['config_dir'],
+        'clusters_file': config['input']['clusters_file']
     }
     return paths
 
@@ -60,7 +97,7 @@ def process_and_save_tree(tree_type: str, tree_path: str, annotation_dict: dict,
                           output_paths: Dict[str, str],
                           align_labels: bool = False, align_boxes: bool = False,
                           logging_level=logging.INFO) -> None:
-    cluster_name = extract_cluster_name(tree_path)  # Get the cluster name from the tree path
+    cluster_name = extract_cluster_name(tree_path)
     setup_logging(output_paths['output_dir'], cluster_name, logging_level=logging_level)
 
     tree = load_tree(tree_path)
@@ -95,7 +132,6 @@ def process_cluster(cluster_name: str, tree_types: list[str], paths: Dict[str, s
     for tree_type in tree_types:
         output_paths = setup_output_paths(paths['base_output_dir'], cluster_name, tree_type)
 
-        # Set up logging for this specific cluster
         setup_logging(output_paths['output_dir'], cluster_name)
 
         process_tree_type(tree_type, cluster_name, paths['trees_dir'], annotation_dict, paths['base_output_dir'])
@@ -116,25 +152,15 @@ def process_tree_type(tree_type: str, cluster_name: str, trees_dir: str, annotat
 def concatenate_logs(output_dir: str, final_log_file: str, cluster_names: list[str]) -> None:
     """Concatenate all individual cluster logs into a final log file, in the order of cluster_names."""
 
-    # List to hold the log files in the correct order
     ordered_log_files = []
-
-    # Find log files for each cluster in the order specified in cluster_names
     for cluster_name in cluster_names:
-        # Construct the expected log file path for each cluster
         log_file_pattern = os.path.join(output_dir, '**', f'{cluster_name}_log_tree_analysis.log')
         log_files = glob.glob(log_file_pattern, recursive=True)
-
-        # Ensure only one log file is found for each cluster
         if log_files:
-            ordered_log_files.append(log_files[0])  # Select the first matching log file
+            ordered_log_files.append(log_files[0])
         else:
             logging.warning(f"Log file for cluster {cluster_name} not found.")
 
-    # Debugging: Print the ordered log files that are found
-    print("Ordered log files found for concatenation:", ordered_log_files)
-
-    # Ensure some log files were found
     if not ordered_log_files:
         logging.error(f"No individual log files found in {output_dir}. Final log file will be empty.")
         return
@@ -145,9 +171,9 @@ def concatenate_logs(output_dir: str, final_log_file: str, cluster_names: list[s
                 try:
                     with open(log_file, 'r') as f:
                         log_data = f.read()
-                        if log_data.strip():  # Check if file is not empty
+                        if log_data.strip():
                             final_log.write(log_data)
-                            final_log.write("\n")  # Add a newline between logs for clarity
+                            final_log.write("\n")
                         else:
                             logging.warning(f"Log file {log_file} is empty.")
                 except Exception as e:
@@ -159,9 +185,17 @@ def concatenate_logs(output_dir: str, final_log_file: str, cluster_names: list[s
 
 
 @time_it(message="Main processing function")
-def main(cluster_names_file: str, tree_types: list[str], paths: Dict[str, str]) -> None:
+def main(config_file: str) -> None:
     """Main function to process multiple clusters and tree types."""
-    # Load the annotation file into a dictionary before processing clusters
+    with open(config_file, 'r') as file:
+        config = yaml.safe_load(file)
+
+    # Format the paths in the config file
+    config = format_paths(config)
+
+    # Setup paths from config
+    paths = setup_paths(config)
+
     annotations = load_annotations(paths['annotation_path_id'])
 
     if annotations.duplicated(subset='protein_id').any():
@@ -170,18 +204,17 @@ def main(cluster_names_file: str, tree_types: list[str], paths: Dict[str, str]) 
 
     annotation_dict = annotations.set_index('protein_id').to_dict('index')
 
-    # Read cluster names from the file
-    cluster_names = read_cluster_names_from_file(cluster_names_file)
+    cluster_names = read_cluster_names_from_file(paths['clusters_file'])
+
+    tree_types = config.get('tree_types', ['rooted'])
 
     for cluster_name in cluster_names:
         process_cluster(cluster_name, tree_types, paths, annotation_dict)
         logging.info(f"Cluster {cluster_name} analysis completed")
         print(f"Cluster {cluster_name} analysis completed")
 
-    # Compare clusters as before
     compare_clusters(cluster_names=cluster_names, base_output_dir=paths['base_output_dir'], tree_types=tree_types)
 
-    # Concatenate logs after all clusters are processed
     final_log_file = os.path.join(paths['base_output_dir'], 'final_log_tree_analysis.log')
     concatenate_logs(paths['base_output_dir'], final_log_file, cluster_names)
     logging.info(f"Final log file created at {final_log_file}")
@@ -189,18 +222,10 @@ def main(cluster_names_file: str, tree_types: list[str], paths: Dict[str, str]) 
 
 if __name__ == "__main__":
     import matplotlib
+    matplotlib.use('Agg')
 
-    matplotlib.use('Agg')  # Force matplotlib to use a non-interactive backend
+    parser = argparse.ArgumentParser(description="Run tree analysis for protein clusters.")
+    parser.add_argument("-c", "--config", required=True, help="Path to the YAML configuration file.")
+    args = parser.parse_args()
 
-    # Configurable parameters
-    wd = '/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/2_trees_leaves'
-    paths = setup_paths(wd)
-
-    # Define the path to the cluster names file
-    cluster_names_file = f'{paths["config_dir"]}/clusters.txt'
-
-    # Tree types to process
-    tree_types = ['rooted']
-
-    # Run the main function with the configured parameters
-    main(cluster_names_file=cluster_names_file, tree_types=tree_types, paths=paths)
+    main(config_file=args.config)
