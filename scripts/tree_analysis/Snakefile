@@ -57,6 +57,7 @@ rule compare_clusters:
     output:
         final_log=f"{base_output_dir}/cluster_analysis/rooted/comparison_complete.log",
         concatenated_clusters=f"{base_output_dir}/cluster_analysis/rooted/concatenated_clusters_data.tsv"
+    threads: 1
     shell:
         """
         python3 /mnt/c/crassvirales/phylomes/scripts/tree_analysis/cluster_comparison.py --config {input.config} --clusters_file "{input.clusters_file}" > {output.final_log}
