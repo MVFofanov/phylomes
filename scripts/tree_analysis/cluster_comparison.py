@@ -207,6 +207,279 @@ def plot_cumulative_phyla_barplot(df: pd.DataFrame, output_dir: str) -> None:
     plt.close()
 
 
+@time_it("Generating cumulative relative abundances barplot for Crassvirales thresholds")
+def plot_cumulative_relative_abundances_barplot(df: pd.DataFrame, output_dir: str) -> None:
+    """Generate and save a cumulative barplot for Crassvirales thresholds showing relative abundances by bacterial phyla."""
+
+    # Aggregate the relative data by threshold
+    aggregated_df = df.groupby('threshold').agg({
+        'ratio_Bacteroidetes_to_total': 'mean',
+        'ratio_Actinobacteria_to_total': 'mean',
+        'ratio_Bacillota_to_total': 'mean',
+        'ratio_Proteobacteria_to_total': 'mean',
+        'ratio_Other_to_total': 'mean',
+        'ratio_viral_to_total': 'mean',
+        'crassvirales_ratio': 'mean'
+    }).reset_index()
+
+    # Prepare data for cumulative plotting
+    categories = [
+        'ratio_Bacteroidetes_to_total',
+        'ratio_Actinobacteria_to_total',
+        'ratio_Bacillota_to_total',
+        'ratio_Proteobacteria_to_total',
+        'ratio_Other_to_total',
+        'ratio_viral_to_total',
+        'crassvirales_ratio'
+    ]
+
+    # Calculate cumulative sums for stacked plotting
+    cumulative_data = aggregated_df[categories].cumsum(axis=1)
+
+    # Plot cumulative barplot with increased width
+    bar_width = 2  # Adjusting the width of the bars to make them wider
+
+    plt.figure(figsize=(14, 8))
+    plt.bar(aggregated_df['threshold'], cumulative_data['ratio_Other_to_total'],
+            label='Other Bacteria', color=phylum_colors['Other'], width=bar_width)
+    plt.bar(aggregated_df['threshold'], cumulative_data['ratio_Proteobacteria_to_total'],
+            label='Proteobacteria', color=phylum_colors['Proteobacteria'], width=bar_width)
+    plt.bar(aggregated_df['threshold'], cumulative_data['ratio_Bacillota_to_total'],
+            label='Bacillota', color=phylum_colors['Bacillota'], width=bar_width)
+    plt.bar(aggregated_df['threshold'], cumulative_data['ratio_Actinobacteria_to_total'],
+            label='Actinobacteria', color=phylum_colors['Actinobacteria'], width=bar_width)
+    plt.bar(aggregated_df['threshold'], cumulative_data['ratio_Bacteroidetes_to_total'],
+            label='Bacteroidetes', color=phylum_colors['Bacteroidetes'], width=bar_width)
+    plt.bar(aggregated_df['threshold'], cumulative_data['ratio_viral_to_total'],
+            label='Viral', color=superkingdom_colors['Viruses'], width=bar_width)
+    plt.bar(aggregated_df['threshold'], cumulative_data['crassvirales_ratio'],
+            label='Crassvirales', color=crassvirales_color, width=bar_width)
+
+    plt.title('Cumulative Relative Abundances by Crassvirales Threshold (Bacterial Phyla)')
+    plt.xlabel('Crassvirales Threshold (%)')
+    plt.ylabel('Cumulative Relative Abundances')
+    plt.legend(title='Taxonomic Groups')
+
+    figures_dir = os.path.join(output_dir, 'figures')
+    os.makedirs(figures_dir, exist_ok=True)
+    output_file = os.path.join(figures_dir, 'cumulative_relative_abundances_barplot.png')
+    plt.savefig(output_file, dpi=900)
+    plt.close()
+
+
+@time_it("Generating line plot for mean relative abundances by Crassvirales thresholds")
+def plot_mean_relative_abundances_lineplot(df: pd.DataFrame, output_dir: str) -> None:
+    """Generate and save a line plot showing the mean relative abundances for taxonomic groups by Crassvirales thresholds."""
+
+    # Aggregate the data by threshold to compute the mean of relative abundances
+    aggregated_df = df.groupby('threshold').agg({
+        'ratio_Bacteroidetes_to_total': 'mean',
+        'ratio_Actinobacteria_to_total': 'mean',
+        'ratio_Bacillota_to_total': 'mean',
+        'ratio_Proteobacteria_to_total': 'mean',
+        'ratio_Other_to_total': 'mean',
+        'ratio_viral_to_total': 'mean',
+        'crassvirales_ratio': 'mean'
+    }).reset_index()
+
+    # Plot a lineplot for each taxonomic group
+    plt.figure(figsize=(14, 8))
+
+    plt.plot(aggregated_df['threshold'], aggregated_df['ratio_Bacteroidetes_to_total'],
+             label='Bacteroidetes', color=phylum_colors['Bacteroidetes'], marker='o')
+    plt.plot(aggregated_df['threshold'], aggregated_df['ratio_Actinobacteria_to_total'],
+             label='Actinobacteria', color=phylum_colors['Actinobacteria'], marker='o')
+    plt.plot(aggregated_df['threshold'], aggregated_df['ratio_Bacillota_to_total'],
+             label='Bacillota', color=phylum_colors['Bacillota'], marker='o')
+    plt.plot(aggregated_df['threshold'], aggregated_df['ratio_Proteobacteria_to_total'],
+             label='Proteobacteria', color=phylum_colors['Proteobacteria'], marker='o')
+    plt.plot(aggregated_df['threshold'], aggregated_df['ratio_Other_to_total'],
+             label='Other Bacteria', color=phylum_colors['Other'], marker='o')
+    plt.plot(aggregated_df['threshold'], aggregated_df['ratio_viral_to_total'],
+             label='Viral', color=superkingdom_colors['Viruses'], marker='o')
+    plt.plot(aggregated_df['threshold'], aggregated_df['crassvirales_ratio'],
+             label='Crassvirales', color=crassvirales_color, marker='o')
+
+    plt.title('Mean Relative Abundances by Crassvirales Threshold (Bacterial Phyla)')
+    plt.xlabel('Crassvirales Threshold (%)')
+    plt.ylabel('Mean Relative Abundance')
+    plt.legend(title='Taxonomic Groups')
+
+    figures_dir = os.path.join(output_dir, 'figures')
+    os.makedirs(figures_dir, exist_ok=True)
+    output_file = os.path.join(figures_dir, 'mean_relative_abundances_lineplot.png')
+    plt.savefig(output_file, dpi=900)
+    plt.close()
+
+
+@time_it("Generating line plot with percentiles for mean relative abundances by Crassvirales thresholds")
+def plot_mean_relative_abundances_with_error_bands(df: pd.DataFrame, output_dir: str) -> None:
+    """Generate and save a line plot showing the mean relative abundances with 25th and 75th percentiles
+    for taxonomic groups by Crassvirales thresholds."""
+
+    # Aggregate the data by threshold to compute the mean and percentiles of relative abundances
+    aggregated_df = df.groupby('threshold').agg({
+        'ratio_Bacteroidetes_to_total': ['mean', '25%', '75%'],
+        'ratio_Actinobacteria_to_total': ['mean', '25%', '75%'],
+        'ratio_Bacillota_to_total': ['mean', '25%', '75%'],
+        'ratio_Proteobacteria_to_total': ['mean', '25%', '75%'],
+        'ratio_Other_to_total': ['mean', '25%', '75%'],
+        'ratio_viral_to_total': ['mean', '25%', '75%'],
+        'crassvirales_ratio': ['mean', '25%', '75%']
+    }).reset_index()
+
+    # Flatten the multi-index columns
+    aggregated_df.columns = ['_'.join(col).strip() if col[1] else col[0] for col in aggregated_df.columns.values]
+
+    plt.figure(figsize=(14, 8))
+
+# Function to plot the mean and error band for each taxonomic group
+def plot_with_error_bands(x, y_mean, y_lower, y_upper, label, color):
+    plt.plot(x, y_mean, label=label, color=color, marker='o')
+    plt.fill_between(x, y_lower, y_upper, color=color, alpha=0.3)  # Shaded area between 25th and 75th percentile
+
+    # Plot each taxonomic group with its respective error band
+    plot_with_error_bands(
+        aggregated_df['threshold'], aggregated_df['ratio_Bacteroidetes_to_total_mean'],
+        aggregated_df['ratio_Bacteroidetes_to_total_25%'], aggregated_df['ratio_Bacteroidetes_to_total_75%'],
+        'Bacteroidetes', phylum_colors['Bacteroidetes']
+    )
+
+    plot_with_error_bands(
+        aggregated_df['threshold'], aggregated_df['ratio_Actinobacteria_to_total_mean'],
+        aggregated_df['ratio_Actinobacteria_to_total_25%'], aggregated_df['ratio_Actinobacteria_to_total_75%'],
+        'Actinobacteria', phylum_colors['Actinobacteria']
+    )
+
+    plot_with_error_bands(
+        aggregated_df['threshold'], aggregated_df['ratio_Bacillota_to_total_mean'],
+        aggregated_df['ratio_Bacillota_to_total_25%'], aggregated_df['ratio_Bacillota_to_total_75%'],
+        'Bacillota', phylum_colors['Bacillota']
+    )
+
+    plot_with_error_bands(
+        aggregated_df['threshold'], aggregated_df['ratio_Proteobacteria_to_total_mean'],
+        aggregated_df['ratio_Proteobacteria_to_total_25%'], aggregated_df['ratio_Proteobacteria_to_total_75%'],
+        'Proteobacteria', phylum_colors['Proteobacteria']
+    )
+
+    plot_with_error_bands(
+        aggregated_df['threshold'], aggregated_df['ratio_Other_to_total_mean'],
+        aggregated_df['ratio_Other_to_total_25%'], aggregated_df['ratio_Other_to_total_75%'],
+        'Other Bacteria', phylum_colors['Other']
+    )
+
+    plot_with_error_bands(
+        aggregated_df['threshold'], aggregated_df['ratio_viral_to_total_mean'],
+        aggregated_df['ratio_viral_to_total_25%'], aggregated_df['ratio_viral_to_total_75%'],
+        'Viral', superkingdom_colors['Viruses']
+    )
+
+    plot_with_error_bands(
+        aggregated_df['threshold'], aggregated_df['crassvirales_ratio_mean'],
+        aggregated_df['crassvirales_ratio_25%'], aggregated_df['crassvirales_ratio_75%'],
+        'Crassvirales', crassvirales_color
+    )
+
+    plt.title('Mean Relative Abundances by Crassvirales Threshold (With Percentiles)')
+    plt.xlabel('Crassvirales Threshold (%)')
+    plt.ylabel('Mean Relative Abundance (with 25th and 75th Percentiles)')
+    plt.legend(title='Taxonomic Groups')
+
+    figures_dir = os.path.join(output_dir, 'figures')
+    os.makedirs(figures_dir, exist_ok=True)
+    output_file = os.path.join(figures_dir, 'mean_relative_abundances_with_percentiles_lineplot.png')
+    plt.savefig(output_file, dpi=900)
+    plt.close()
+
+
+def plot_mean_relative_abundances_with_log10_error_bands(df: pd.DataFrame, output_dir: str) -> None:
+    """Generate and save a line plot showing the log10-transformed mean relative abundances with 25th and 75th percentiles
+    for taxonomic groups by Crassvirales thresholds."""
+
+    # Aggregate the data by threshold to compute the mean and percentiles of relative abundances
+    aggregated_df = df.groupby('threshold').agg({
+        'ratio_Bacteroidetes_to_total': ['mean', lambda x: x.quantile(0.25), lambda x: x.quantile(0.75)],
+        'ratio_Actinobacteria_to_total': ['mean', lambda x: x.quantile(0.25), lambda x: x.quantile(0.75)],
+        'ratio_Bacillota_to_total': ['mean', lambda x: x.quantile(0.25), lambda x: x.quantile(0.75)],
+        'ratio_Proteobacteria_to_total': ['mean', lambda x: x.quantile(0.25), lambda x: x.quantile(0.75)],
+        'ratio_Other_to_total': ['mean', lambda x: x.quantile(0.25), lambda x: x.quantile(0.75)],
+        'ratio_viral_to_total': ['mean', lambda x: x.quantile(0.25), lambda x: x.quantile(0.75)],
+        'crassvirales_ratio': ['mean', lambda x: x.quantile(0.25), lambda x: x.quantile(0.75)]
+    }).reset_index()
+
+    # Flatten the multi-index columns
+    aggregated_df.columns = ['_'.join(col).strip() if col[1] else col[0] for col in aggregated_df.columns.values]
+
+    plt.figure(figsize=(14, 8))
+
+    # Function to plot the log10-transformed mean and error band for each taxonomic group
+    def plot_with_error_bands(x, y_mean, y_lower, y_upper, label, color):
+        log_y_mean = np.log10(y_mean + 1e-10)  # Adding small value to avoid log10(0)
+        log_y_lower = np.log10(y_lower + 1e-10)
+        log_y_upper = np.log10(y_upper + 1e-10)
+
+        plt.plot(x, log_y_mean, label=label, color=color, marker='o')
+        plt.fill_between(x, log_y_lower, log_y_upper, color=color,
+                         alpha=0.3)  # Shaded area between 25th and 75th percentile
+
+    # Plot each taxonomic group with its respective log10 error band
+    plot_with_error_bands(
+        aggregated_df['threshold'], aggregated_df['ratio_Bacteroidetes_to_total_mean'],
+        aggregated_df['ratio_Bacteroidetes_to_total_<lambda_0>'],
+        aggregated_df['ratio_Bacteroidetes_to_total_<lambda_1>'],
+        'Bacteroidetes', phylum_colors['Bacteroidetes']
+    )
+
+    plot_with_error_bands(
+        aggregated_df['threshold'], aggregated_df['ratio_Actinobacteria_to_total_mean'],
+        aggregated_df['ratio_Actinobacteria_to_total_<lambda_0>'],
+        aggregated_df['ratio_Actinobacteria_to_total_<lambda_1>'],
+        'Actinobacteria', phylum_colors['Actinobacteria']
+    )
+
+    plot_with_error_bands(
+        aggregated_df['threshold'], aggregated_df['ratio_Bacillota_to_total_mean'],
+        aggregated_df['ratio_Bacillota_to_total_<lambda_0>'], aggregated_df['ratio_Bacillota_to_total_<lambda_1>'],
+        'Bacillota', phylum_colors['Bacillota']
+    )
+
+    plot_with_error_bands(
+        aggregated_df['threshold'], aggregated_df['ratio_Proteobacteria_to_total_mean'],
+        aggregated_df['ratio_Proteobacteria_to_total_<lambda_0>'],
+        aggregated_df['ratio_Proteobacteria_to_total_<lambda_1>'],
+        'Proteobacteria', phylum_colors['Proteobacteria']
+    )
+
+    plot_with_error_bands(
+        aggregated_df['threshold'], aggregated_df['ratio_Other_to_total_mean'],
+        aggregated_df['ratio_Other_to_total_<lambda_0>'], aggregated_df['ratio_Other_to_total_<lambda_1>'],
+        'Other Bacteria', phylum_colors['Other']
+    )
+
+    plot_with_error_bands(
+        aggregated_df['threshold'], aggregated_df['ratio_viral_to_total_mean'],
+        aggregated_df['ratio_viral_to_total_<lambda_0>'], aggregated_df['ratio_viral_to_total_<lambda_1>'],
+        'Viral', superkingdom_colors['Viruses']
+    )
+
+    plot_with_error_bands(
+        aggregated_df['threshold'], aggregated_df['crassvirales_ratio_mean'],
+        aggregated_df['crassvirales_ratio_<lambda_0>'], aggregated_df['crassvirales_ratio_<lambda_1>'],
+        'Crassvirales', crassvirales_color
+    )
+
+    plt.title('Mean Relative Abundances (Log10) by Crassvirales Threshold (With Percentiles)')
+    plt.xlabel('Crassvirales Threshold (%)')
+    plt.ylabel('Log10 Mean Relative Abundance (with 25th and 75th Percentiles)')
+    plt.legend(title='Taxonomic Groups')
+
+    figures_dir = os.path.join(output_dir, 'figures')
+    os.makedirs(figures_dir, exist_ok=True)
+    output_file = os.path.join(figures_dir, 'log10_mean_relative_abundances_with_percentiles_lineplot.png')
+    plt.savefig(output_file, dpi=900)
+    plt.close()
+
 @time_it("Comparing clusters")
 def compare_clusters(cluster_names: List[str], base_output_dir: str, tree_types: List[str]) -> None:
     """Compare clusters by generating plots from concatenated data for each tree type."""
@@ -218,6 +491,13 @@ def compare_clusters(cluster_names: List[str], base_output_dir: str, tree_types:
             plot_cumulative_superkingdom_barplot(concatenated_df,
                                                  os.path.join(base_output_dir, 'cluster_analysis', tree_type))
             plot_cumulative_phyla_barplot(concatenated_df, os.path.join(base_output_dir, 'cluster_analysis', tree_type))
+            plot_cumulative_relative_abundances_barplot(concatenated_df,
+                                                        os.path.join(base_output_dir, 'cluster_analysis', tree_type))
+            plot_mean_relative_abundances_lineplot(concatenated_df,
+                                                   os.path.join(base_output_dir, 'cluster_analysis', tree_type))
+
+            plot_mean_relative_abundances_with_error_bands(concatenated_df,
+                                                   os.path.join(base_output_dir, 'cluster_analysis', tree_type))
         except FileNotFoundError as e:
             print(e)
             logging.error(e)
