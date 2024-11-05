@@ -1,3 +1,4 @@
+import logging
 from ete3 import Tree, TreeStyle, NodeStyle, TextFace, faces, AttrFace
 import pandas as pd
 from typing import Dict, List
@@ -32,19 +33,21 @@ def initialize_node_features(tree: Tree):
 
 def find_mrca_and_annotate(tree: Tree, contigs: List[str], row_data: dict, protein_contig_dict):
     """Find the MRCA of given proteins and annotate it with cluster and bacterial counts."""
+    # Collect TreeNode objects based on contigs
     protein_leaves = [leaf for leaf in tree.iter_leaves() if extract_contig_id(leaf.name) in contigs]
-    # print(f'{contigs[:5]=}')
-    # print(f'{protein_leaves[:5]=}')
+
     if not protein_leaves:
+        logger.debug(f"No matching leaves found for contigs: {contigs}")
         return  # Skip if no matching leaves are found
 
     # Find the MRCA of the protein leaves
     mrca_node = tree.get_common_ancestor(protein_leaves)
-    # print((f'{mrca_node=}'))
-    # print((f'{mrca_node.features=}'))
+    logger.debug(f"MRCA found for contigs {contigs}: {mrca_node}")
 
     # Increment the number of clusters at the MRCA node
+    logger.debug(f"Before update: number_of_clusters at MRCA = {mrca_node.number_of_clusters}")
     mrca_node.number_of_clusters += 1
+    logger.debug(f"After update: number_of_clusters at MRCA = {mrca_node.number_of_clusters}")
 
     # Update bacterial counts
     mrca_node.number_of_Bacteroidetes += row_data.get("number_of_Bacteroidetes", 0)
@@ -52,27 +55,9 @@ def find_mrca_and_annotate(tree: Tree, contigs: List[str], row_data: dict, prote
     mrca_node.number_of_Bacillota += row_data.get("number_of_Bacillota", 0)
     mrca_node.number_of_Proteobacteria += row_data.get("number_of_Proteobacteria", 0)
     mrca_node.number_of_Other_bacteria += row_data.get("number_of_Other_bacteria", 0)
-    # print((f'{mrca_node.number_of_clusters=}'))
-    # print((f'{mrca_node.number_of_Bacteroidetes=}'))
-    # print((f'{mrca_node.number_of_Actinobacteria=}'))
-    # print((f'{mrca_node.number_of_Bacillota=}'))
-    # print((f'{mrca_node.number_of_Proteobacteria=}'))
-
-
-def annotate_tree_with_clusters(tree: Tree, data: pd.DataFrame, protein_contig_dict):
-    """Annotate the tree based on the filtered data."""
-    for _, row in data.iterrows():
-        proteins = row["crassvirales_proteins"].split(", ")
-        contigs = [extract_contig_id(protein_id) for protein_id in proteins]
-        # print(f"{proteins=}")
-        row_data = {
-            "number_of_Bacteroidetes": row.get("number_of_Bacteroidetes", 0),
-            "number_of_Actinobacteria": row.get("number_of_Actinobacteria", 0),
-            "number_of_Bacillota": row.get("number_of_Bacillota", 0),
-            "number_of_Proteobacteria": row.get("number_of_Proteobacteria", 0),
-            "number_of_Other_bacteria": row.get("number_of_Other_bacteria", 0)
-        }
-        find_mrca_and_annotate(tree, contigs, row_data, protein_contig_dict)
+    logger.debug(f"Updated MRCA node counts: Bacteroidetes={mrca_node.number_of_Bacteroidetes}, "
+                 f"Actinobacteria={mrca_node.number_of_Actinobacteria}, Bacillota={mrca_node.number_of_Bacillota}, "
+                 f"Proteobacteria={mrca_node.number_of_Proteobacteria}, Other={mrca_node.number_of_Other_bacteria}")
 
 
 def annotate_tree(tree: Tree, annotations: pd.DataFrame, crassvirales_color_scheme: Dict[str, str],
@@ -117,6 +102,21 @@ def annotate_tree(tree: Tree, annotations: pd.DataFrame, crassvirales_color_sche
     return protein_contig_dict
 
 
+def annotate_tree_with_clusters(tree: Tree, data: pd.DataFrame, protein_contig_dict):
+    """Annotate the tree based on the filtered data."""
+    for _, row in data.iterrows():
+        proteins = row["crassvirales_proteins"].split(", ")
+        contigs = [extract_contig_id(protein_id) for protein_id in proteins]
+        row_data = {
+            "number_of_Bacteroidetes": row.get("number_of_Bacteroidetes", 0),
+            "number_of_Actinobacteria": row.get("number_of_Actinobacteria", 0),
+            "number_of_Bacillota": row.get("number_of_Bacillota", 0),
+            "number_of_Proteobacteria": row.get("number_of_Proteobacteria", 0),
+            "number_of_Other_bacteria": row.get("number_of_Other_bacteria", 0)
+        }
+        find_mrca_and_annotate(tree, contigs, row_data, protein_contig_dict)
+
+
 def add_pie_chart(node):
     """Add a pie chart to a node based on bacterial ratios, normalized to 100%."""
     pie_data = [
@@ -127,48 +127,49 @@ def add_pie_chart(node):
         node.number_of_Other_bacteria
     ]
 
-    # Only add pie chart if there are non-zero values
     total = sum(pie_data)
     if total > 0:
-        # Normalize to percentages
+        logger.debug(f"Adding pie chart for node with bacterial counts: {pie_data}")
         pie_data_normalized = [(value / total) * 100 for value in pie_data]
         colors = ["#ff7f00", "#ffff99", "#a6cee3", "#b15928", "#b2df8a"]
         pie_chart = faces.PieChartFace(pie_data_normalized, colors=colors, width=50, height=50)
-        node.add_face(pie_chart, column=0, position="branch-right")  # Specify column=0
+        node.add_face(pie_chart, column=0, position="branch-right")
+    else:
+        logger.debug("Skipping pie chart as all bacterial counts are zero")
 
 
 def render_circular_tree(tree: Tree, output_file: str):
     ts = TreeStyle()
-    ts.mode = "c"  # Circular mode
-    ts.show_leaf_name = False  # Hide leaf names
-    ts.show_branch_length = False  # Hide branch lengths
-    ts.show_branch_support = False  # Hide bootstrap/support values
-    ts.scale = 300  # Adjust scale for better spacing
+    ts.mode = "c"
+    ts.show_leaf_name = False
+    ts.show_branch_length = False
+    ts.show_branch_support = False
+    ts.scale = 300
 
-    # Add pie charts and cluster count labels to nodes with clusters
     for node in tree.traverse():
-        if node.number_of_clusters >= 0:
-            # Add a pie chart to represent bacterial ratios
+        if node.number_of_clusters > 0:
+            logger.debug(f"Rendering node with number_of_clusters = {node.number_of_clusters}")
             add_pie_chart(node)
-
-            # Adjust node size to represent the number of clusters
             nstyle = NodeStyle()
-            nstyle["size"] = 10 + 2 * node.number_of_clusters  # Scale size by cluster count
+            nstyle["size"] = 10 + 2 * node.number_of_clusters
             nstyle["fgcolor"] = "black"
             node.set_style(nstyle)
-
-            # Add a label with the number_of_clusters value
             cluster_count_face = TextFace(f"{node.number_of_clusters}", fsize=10, fgcolor="black")
             node.add_face(cluster_count_face, column=0, position="branch-right")
+        else:
+            logger.debug(f"Skipping node with number_of_clusters = {node.number_of_clusters}")
 
-    # Render and save as both PNG and PDF
-    tree.render(output_file, tree_style=ts, dpi=1200)  # PNG version
-    pdf_output_file = output_file.replace(".png", ".pdf")  # Set PDF file name
-    tree.render(pdf_output_file, tree_style=ts, dpi=1200)  # PDF version
-    print(f"Annotated circular tree saved as PNG to {output_file} and as PDF to {pdf_output_file}")
+    tree.render(output_file, tree_style=ts, dpi=1200)
+    pdf_output_file = output_file.replace(".png", ".pdf")
+    tree.render(pdf_output_file, tree_style=ts, dpi=1200)
+    logger.info(f"Annotated circular tree saved as PNG to {output_file} and as PDF to {pdf_output_file}")
 
 
 if __name__ == "__main__":
+    # Configure logging
+    logging.basicConfig(level=logging.INFO)  # Change to logging.DEBUG to see debug messages
+    logger = logging.getLogger(__name__)
+
     # File paths
     terl_tree_dir = "/mnt/c/crassvirales/phylomes/TerL_tree"
     tree_file = f"{terl_tree_dir}/terL_sequences_trimmed_merged_10gaps.treefile"
