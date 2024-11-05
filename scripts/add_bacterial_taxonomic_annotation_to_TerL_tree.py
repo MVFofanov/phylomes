@@ -115,6 +115,7 @@ def annotate_tree_with_clusters(tree: Tree, data: pd.DataFrame, protein_contig_d
             "number_of_Other_bacteria": row.get("number_of_Other_bacteria", 0)
         }
         find_mrca_and_annotate(tree, contigs, row_data, protein_contig_dict)
+    return tree
 
 
 def add_pie_chart(node):
@@ -138,31 +139,41 @@ def add_pie_chart(node):
         logger.debug("Skipping pie chart as all bacterial counts are zero")
 
 
-def render_circular_tree(tree: Tree, output_file: str):
+def render_circular_tree(tree: Tree, output_file_base: str):
     ts = TreeStyle()
     ts.mode = "c"
     ts.show_leaf_name = False
     ts.show_branch_length = False
     ts.show_branch_support = False
-    ts.scale = 300
+    ts.scale = 200  # Lower scale for better rendering performance
 
     for node in tree.traverse():
         if node.number_of_clusters > 0:
-            logger.debug(f"Rendering node with number_of_clusters = {node.number_of_clusters}")
             add_pie_chart(node)
             nstyle = NodeStyle()
-            nstyle["size"] = 10 + 2 * node.number_of_clusters
+            nstyle["size"] = 12 + 3 * node.number_of_clusters
             nstyle["fgcolor"] = "black"
             node.set_style(nstyle)
-            cluster_count_face = TextFace(f"{node.number_of_clusters}", fsize=10, fgcolor="black")
+            cluster_count_face = TextFace(f"{node.number_of_clusters}", fsize=12, fgcolor="black")
             node.add_face(cluster_count_face, column=0, position="branch-right")
-        else:
-            logger.debug(f"Skipping node with number_of_clusters = {node.number_of_clusters}")
 
-    tree.render(output_file, tree_style=ts, dpi=1200)
-    pdf_output_file = output_file.replace(".png", ".pdf")
-    tree.render(pdf_output_file, tree_style=ts, dpi=1200)
-    logger.info(f"Annotated circular tree saved as PNG to {output_file} and as PDF to {pdf_output_file}")
+    # Save as SVG, which is efficient for large, complex visuals
+    svg_output_file = f"{output_file_base}.svg"
+    logger.info(f"Saving tree as SVG to {svg_output_file}")
+    tree.render(svg_output_file, tree_style=ts)
+
+    # Save as PNG with reduced DPI for better performance
+    png_output_file = f"{output_file_base}.png"
+    logger.info(f"Saving tree as PNG to {png_output_file}")
+    tree.render(png_output_file, tree_style=ts, dpi=300)
+
+    # Save as PDF with reduced DPI for better performance
+    pdf_output_file = f"{output_file_base}.pdf"
+    logger.info(f"Saving tree as PDF to {pdf_output_file}")
+    tree.render(pdf_output_file, tree_style=ts, dpi=300)
+
+    logger.info(f"Tree saved as SVG, PNG, and PDF formats with base name {output_file_base}")
+
 
 
 if __name__ == "__main__":
@@ -175,7 +186,7 @@ if __name__ == "__main__":
     tree_file = f"{terl_tree_dir}/terL_sequences_trimmed_merged_10gaps.treefile"
     annotation_file = "/mnt/c/crassvirales/phylomes/supplementary_tables/phylome_taxonomy_s1.txt"
     cluster_data_file = "/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/2_trees_leaves/phylome_summary/tree_analysis_test/cluster_analysis_all_draco/rooted/concatenated_clusters_data.tsv"
-    output_image_file = f"{terl_tree_dir}/annotated_tree_circular.png"
+    output_image_file = f"{terl_tree_dir}/annotated_tree_circular"
 
     # Define color schemes
     crassvirales_color_scheme = {
@@ -215,7 +226,7 @@ if __name__ == "__main__":
     initialize_node_features(tree)
 
     # Annotate tree with cluster data
-    annotate_tree_with_clusters(tree, filtered_data, protein_contig_dict)
+    tree = annotate_tree_with_clusters(tree, filtered_data, protein_contig_dict)
 
     # Render and save the circular tree as PNG and PDF
     render_circular_tree(tree, output_image_file)
