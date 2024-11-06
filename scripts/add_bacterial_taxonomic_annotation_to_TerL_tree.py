@@ -29,6 +29,7 @@ def initialize_node_features(tree: Tree):
         node.add_feature("number_of_Bacillota", 0)
         node.add_feature("number_of_Proteobacteria", 0)
         node.add_feature("number_of_Other_bacteria", 0)
+        node.add_feature("number_of_bacterial", 0)  # Total bacterial count
 
 
 def find_mrca_and_annotate(tree: Tree, contigs: List[str], row_data: dict, protein_contig_dict):
@@ -55,9 +56,15 @@ def find_mrca_and_annotate(tree: Tree, contigs: List[str], row_data: dict, prote
     mrca_node.number_of_Bacillota += row_data.get("number_of_Bacillota", 0)
     mrca_node.number_of_Proteobacteria += row_data.get("number_of_Proteobacteria", 0)
     mrca_node.number_of_Other_bacteria += row_data.get("number_of_Other_bacteria", 0)
-    logger.debug(f"Updated MRCA node counts: Bacteroidetes={mrca_node.number_of_Bacteroidetes}, "
-                 f"Actinobacteria={mrca_node.number_of_Actinobacteria}, Bacillota={mrca_node.number_of_Bacillota}, "
-                 f"Proteobacteria={mrca_node.number_of_Proteobacteria}, Other={mrca_node.number_of_Other_bacteria}")
+
+    # Calculate total bacterial proteins and store in 'number_of_bacterial'
+    mrca_node.number_of_bacterial = (
+        mrca_node.number_of_Bacteroidetes +
+        mrca_node.number_of_Actinobacteria +
+        mrca_node.number_of_Bacillota +
+        mrca_node.number_of_Proteobacteria +
+        mrca_node.number_of_Other_bacteria
+    )
 
 
 def annotate_tree(tree: Tree, annotations: pd.DataFrame, crassvirales_color_scheme: Dict[str, str],
@@ -74,6 +81,9 @@ def annotate_tree(tree: Tree, annotations: pd.DataFrame, crassvirales_color_sche
 
             # Get family_crassus and host_phylum
             family = row_data.get('family_crassus', 'unknown')
+            subfamily = row_data.get('subfamily_crassus', 'unknown')
+            genus = row_data.get('genus_crassus', 'unknown')
+            species = row_data.get('species_crassus', 'unknown')
             host_phylum = row_data.get('host_phylum', 'unknown')
 
             # Color annotation by family
@@ -90,14 +100,16 @@ def annotate_tree(tree: Tree, annotations: pd.DataFrame, crassvirales_color_sche
                 leaf.set_style(nstyle)
 
             # Create and add text faces for each annotation level
-            family_face = TextFace(f"Family: {family}", fsize=10,
+            family_face = TextFace(f"Taxonomy: {family};{subfamily};{genus};{species}.", fsize=10,
                                    fgcolor=crassvirales_color_scheme.get(family, "black"))
             host_phylum_face = TextFace(f"Host Phylum: {host_phylum}", fsize=10,
                                         fgcolor=bacterial_phylum_colors.get(host_phylum, "black"))
+            contig_id_face = TextFace(f"Genome: {contig_id}", fsize=10)
 
             # Attach the faces to the leaf node
             leaf.add_face(family_face, column=0)
             leaf.add_face(host_phylum_face, column=1)
+            leaf.add_face(contig_id_face, column=2)
 
     return protein_contig_dict
 
@@ -135,6 +147,10 @@ def add_pie_chart(node):
         colors = ["#ff7f00", "#ffff99", "#a6cee3", "#b15928", "#b2df8a"]
         pie_chart = faces.PieChartFace(pie_data_normalized, colors=colors, width=50, height=50)
         node.add_face(pie_chart, column=0, position="branch-right")
+
+        # Add the total bacterial protein count as a label
+        bacterial_count_face = TextFace(f"{node.number_of_bacterial}", fsize=12, fgcolor="black")
+        node.add_face(bacterial_count_face, column=1, position="branch-right")
     else:
         logger.debug("Skipping pie chart as all bacterial counts are zero")
 
@@ -157,17 +173,17 @@ def render_circular_tree(tree: Tree, output_file_base: str):
             cluster_count_face = TextFace(f"{node.number_of_clusters}", fsize=12, fgcolor="black")
             node.add_face(cluster_count_face, column=0, position="branch-right")
 
-    # Save as SVG, which is efficient for large, complex visuals
+    # Save as SVG
     svg_output_file = f"{output_file_base}.svg"
     logger.info(f"Saving tree as SVG to {svg_output_file}")
     tree.render(svg_output_file, tree_style=ts)
 
-    # Save as PNG with reduced DPI for better performance
+    # Save as PNG
     png_output_file = f"{output_file_base}.png"
     logger.info(f"Saving tree as PNG to {png_output_file}")
     tree.render(png_output_file, tree_style=ts, dpi=300)
 
-    # Save as PDF with reduced DPI for better performance
+    # Save as PDF
     pdf_output_file = f"{output_file_base}.pdf"
     logger.info(f"Saving tree as PDF to {pdf_output_file}")
     tree.render(pdf_output_file, tree_style=ts)
