@@ -170,7 +170,7 @@ def render_circular_tree(tree: Tree, output_file_base: str):
     # Save as PDF with reduced DPI for better performance
     pdf_output_file = f"{output_file_base}.pdf"
     logger.info(f"Saving tree as PDF to {pdf_output_file}")
-    tree.render(pdf_output_file, tree_style=ts, dpi=300)
+    tree.render(pdf_output_file, tree_style=ts)
 
     logger.info(f"Tree saved as SVG, PNG, and PDF formats with base name {output_file_base}")
 
