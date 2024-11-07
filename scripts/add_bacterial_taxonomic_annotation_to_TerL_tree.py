@@ -146,7 +146,7 @@ def add_combined_pie_chart(node):
     total = sum(pie_data)
     if total > 0:
         pie_data_normalized = [(value / total) * 100 for value in pie_data]
-        colors = ["#6baed6", "#fd8d3c"]  # Colors for bacterial (blue) and viral (orange) segments
+        colors = ['#33a02c', '#6a3d9a']  # Colors for bacterial (Forest Green) and viral (Royal Purple) segments
         pie_chart = faces.PieChartFace(pie_data_normalized, colors=colors, width=50, height=50)
         node.add_face(pie_chart, column=1, position="branch-right")
 
