@@ -136,25 +136,45 @@ def add_bacterial_pie_chart(node):
         bacterial_count_face = TextFace(f"Bacterial: {total}", fsize=10, fgcolor="black")
         node.add_face(bacterial_count_face, column=0, position="branch-bottom")
 
+
 def add_combined_pie_chart(node):
-    """Add a combined pie chart for bacterial and viral counts on a node."""
+    """Add a combined pie chart to represent bacterial phyla and viral counts with node size based on number of clusters."""
     pie_data = [
-        node.number_of_bacterial,
+        node.number_of_Bacteroidetes,
+        node.number_of_Actinobacteria,
+        node.number_of_Bacillota,
+        node.number_of_Proteobacteria,
+        node.number_of_Other_bacteria,
         node.number_of_viral
     ]
 
+    # Calculate the total for normalizing pie slices
     total = sum(pie_data)
     if total > 0:
         pie_data_normalized = [(value / total) * 100 for value in pie_data]
-        colors = ['#33a02c', '#6a3d9a']  # Colors for bacterial (Forest Green) and viral (Royal Purple) segments
-        pie_chart = faces.PieChartFace(pie_data_normalized, colors=colors, width=50, height=50)
-        node.add_face(pie_chart, column=1, position="branch-right")
 
-        # Add total bacterial and viral count around bacterial/viral pie chart
+        # Colors for each segment: bacterial phyla and viral
+        colors = [
+            "#ff7f00",  # Bacteroidetes
+            "#ffff99",  # Actinobacteria
+            "#a6cee3",  # Bacillota
+            "#b15928",  # Proteobacteria
+            "#b2df8a",  # Other bacteria
+            "#6a3d9a"  # Viral (purple)
+        ]
+
+        # Create a pie chart face with size proportional to the number of clusters
+        pie_chart = faces.PieChartFace(pie_data_normalized, colors=colors, width=50 + 3 * node.number_of_clusters,
+                                       height=50 + 3 * node.number_of_clusters)
+        node.add_face(pie_chart, column=0, position="branch-right")
+
+        # Label the total protein count around the combined pie chart
         total_count_face = TextFace(f"Total: {total}", fsize=10, fgcolor="black")
-        node.add_face(total_count_face, column=1, position="branch-bottom")
+        node.add_face(total_count_face, column=0, position="branch-bottom")
+
 
 def render_circular_tree(tree: Tree, output_file_base: str):
+    """Render the tree with combined pie charts and node size representing number of clusters."""
     ts = TreeStyle()
     ts.mode = "c"
     ts.show_leaf_name = False
@@ -164,20 +184,14 @@ def render_circular_tree(tree: Tree, output_file_base: str):
 
     for node in tree.traverse():
         if node.number_of_clusters > 0:
-            # Add the bacterial phyla pie chart
-            add_bacterial_pie_chart(node)
-            # Add the combined bacterial vs viral pie chart
+            # Add the combined pie chart
             add_combined_pie_chart(node)
 
-            # Adjust node style
+            # Adjust node style (only size based on number of clusters, no extra node dot needed)
             nstyle = NodeStyle()
-            nstyle["size"] = 12 + 3 * node.number_of_clusters
-            nstyle["fgcolor"] = "black"
+            nstyle["size"] = 0  # Hide node dot, pie chart represents the visual indicator
             node.set_style(nstyle)
 
-            # Add cluster count label near node
-            cluster_count_face = TextFace(f"Clusters: {node.number_of_clusters}", fsize=12, fgcolor="black")
-            node.add_face(cluster_count_face, column=2, position="branch-right")
         else:
             logger.debug(f"Skipping node with number_of_clusters = {node.number_of_clusters}")
 
