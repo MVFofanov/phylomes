@@ -2,90 +2,111 @@ import matplotlib
 import matplotlib.pyplot as plt
 import os
 import pandas as pd
-from typing import List, Dict
+from typing import List
 
 # Set environment variable for non-interactive backend
 os.environ['QT_QPA_PLATFORM'] = 'offscreen'
 matplotlib.use('Agg')  # Force matplotlib to use a non-interactive backend
 
-# Define color mapping for each phylum category
-phylum_colors: Dict[str, str] = {
-    'number_of_Actinobacteria': '#ffff99',  # Light Green
-    'number_of_Bacillota': '#a6cee3',       # Light Blue
-    'number_of_Bacteroidetes': '#ff7f00',   # Orange
-    'number_of_Proteobacteria': '#b15928',  # Brown
-    'number_of_viral': '#cab2d6',           # Light Purple
-    'number_of_Other_bacteria': '#b2df8a',  # Light Green (for Other)
-    'ratio_Actinobacteria_to_total': '#ffff99',  # Light Green
-    'ratio_Bacillota_to_total': '#a6cee3',       # Light Blue
-    'ratio_Bacteroidetes_to_total': '#ff7f00',   # Orange
-    'ratio_Proteobacteria_to_total': '#b15928',  # Brown
-    'ratio_viral_to_total': '#cab2d6',           # Light Purple
-    'ratio_Other_to_total': '#b2df8a'            # Light Green (for Other)
-}
 
 def load_data(file_path: str) -> pd.DataFrame:
+    """
+    Load data from a TSV file into a pandas DataFrame.
+
+    Parameters:
+    - file_path: str : The path to the TSV file
+
+    Returns:
+    - DataFrame : The loaded data as a pandas DataFrame
+    """
     return pd.read_csv(file_path, sep='\t')
 
+
 def filter_data(data: pd.DataFrame, threshold: int) -> pd.DataFrame:
+    """
+    Filter data based on a threshold in the 'threshold' column.
+
+    Parameters:
+    - data: DataFrame : The data to filter
+    - threshold: int : The threshold value to filter by
+
+    Returns:
+    - DataFrame : The filtered data
+    """
     return data[data['threshold'] == threshold]
 
+
 def calculate_total_counts(data: pd.DataFrame, columns: List[str]) -> pd.Series:
+    """
+    Calculate the total counts for specified columns and sort them in descending order.
+
+    Parameters:
+    - data: DataFrame : The data to calculate totals from
+    - columns: List[str] : The columns to calculate totals for
+
+    Returns:
+    - Series : A pandas Series with total counts for each column, sorted in descending order
+    """
     return data[columns].sum().sort_values(ascending=False)
 
-def calculate_ratio_means(data: pd.DataFrame, ratio_columns: List[str]) -> pd.Series:
-    return data[ratio_columns].mean().sort_values(ascending=False)
 
 def plot_bar_chart(total_counts: pd.Series, output_path: str) -> None:
     """
-    Plot and save a bar chart of the total counts with specified colors.
+    Plot and save a bar chart of the total counts.
 
     Parameters:
     - total_counts: Series : The data to plot
     - output_path: str : The file path to save the plot as a PNG
     """
     plt.figure(figsize=(10, 6))
-    # Create a DataFrame to manage colors more explicitly
-    total_counts_df = pd.DataFrame({
-        'Category': total_counts.index,
-        'Total Counts': total_counts.values,
-        'Color': [phylum_colors.get(col, '#b2df8a') for col in total_counts.index]  # Default color for unmapped
-    })
-
-    plt.bar(total_counts_df['Category'], total_counts_df['Total Counts'], color=total_counts_df['Color'])
+    total_counts.plot(kind='bar')
     plt.title('Total Counts by Category (Threshold = 90)')
     plt.xlabel('Categories')
     plt.ylabel('Total Counts')
-    plt.xticks(rotation=45, ha='right')
     plt.savefig(output_path, bbox_inches='tight')
     plt.close()
 
-def plot_ratio_bar_chart(ratio_means: pd.Series, output_path: str) -> None:
+
+def calculate_ratio_totals(data: pd.DataFrame, ratio_columns: List[str]) -> pd.Series:
     """
-    Plot and save a bar chart of the ratio values as percentages with specified colors.
+    Calculate the total values for ratio columns and sort them in descending order.
 
     Parameters:
-    - ratio_means: Series : The data to plot (as percentages)
+    - data: DataFrame : The data to calculate ratios from
+    - ratio_columns: List[str] : The columns to calculate totals for
+
+    Returns:
+    - Series : A pandas Series with total values for each ratio column, sorted in descending order
+    """
+    return data[ratio_columns].sum().sort_values(ascending=False)
+
+
+def plot_ratio_bar_chart(ratio_totals: pd.Series, output_path: str) -> None:
+    """
+    Plot and save a bar chart of the ratio values.
+
+    Parameters:
+    - ratio_totals: Series : The data to plot
     - output_path: str : The file path to save the plot as a PNG
     """
     plt.figure(figsize=(10, 6))
-    # Create a DataFrame to manage colors more explicitly
-    ratio_means_df = pd.DataFrame({
-        'Category': ratio_means.index,
-        'Average Percentage': ratio_means.values,
-        'Color': [phylum_colors.get(col, '#b2df8a') for col in ratio_means.index]  # Default color for unmapped
-    })
-
-    plt.bar(ratio_means_df['Category'], ratio_means_df['Average Percentage'], color=ratio_means_df['Color'])
-    plt.title('Average Ratios by Category (Threshold = 90)')
+    ratio_totals.plot(kind='bar')
+    plt.title('Ratio Totals by Category (Threshold = 90)')
     plt.xlabel('Categories')
-    plt.ylabel('Average Percentage (%)')
-    plt.ylim(0, 100)
-    plt.xticks(rotation=45, ha='right')
+    plt.ylabel('Total Ratios')
     plt.savefig(output_path, bbox_inches='tight')
     plt.close()
 
+
 def main(file_path: str, output_path_counts: str, output_path_ratios: str) -> None:
+    """
+    Main function to execute the workflow for both total counts and ratio plots.
+
+    Parameters:
+    - file_path: str : The path to the input TSV file
+    - output_path_counts: str : The path to save the counts bar plot PNG file
+    - output_path_ratios: str : The path to save the ratios bar plot PNG file
+    """
     data = load_data(file_path)
     filtered_data = filter_data(data, threshold=90)
 
@@ -104,8 +125,9 @@ def main(file_path: str, output_path_counts: str, output_path_ratios: str) -> No
         'ratio_Actinobacteria_to_total', 'ratio_Bacillota_to_total',
         'ratio_Proteobacteria_to_total', 'ratio_Other_to_total'
     ]
-    ratio_means = calculate_ratio_means(filtered_data, ratio_columns)
-    plot_ratio_bar_chart(ratio_means, output_path_ratios)
+    ratio_totals = calculate_ratio_totals(filtered_data, ratio_columns)
+    plot_ratio_bar_chart(ratio_totals, output_path_ratios)
+
 
 if __name__ == "__main__":
     # Example usage:

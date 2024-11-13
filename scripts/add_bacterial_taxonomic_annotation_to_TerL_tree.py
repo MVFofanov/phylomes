@@ -10,16 +10,22 @@ os.environ["QT_QPA_PLATFORM"] = "offscreen"
 def load_annotations(annotation_file: str) -> pd.DataFrame:
     return pd.read_csv(annotation_file, sep="\t")
 
+
 def parse_tree(tree_file: str) -> Tree:
     return Tree(tree_file, format=1)
+
 
 def extract_contig_id(node_name: str) -> str:
     return node_name.split('|')[0]
 
+
 def initialize_node_features(tree: Tree):
     """Initialize node features to zero for counting purposes."""
     for node in tree.traverse():
+        node.add_feature("clades", set())
+        node.add_feature("clusters", set())
         node.add_feature("number_of_clusters", 0)
+        node.add_feature("number_of_clades", 0)
         node.add_feature("number_of_Bacteroidetes", 0)
         node.add_feature("number_of_Actinobacteria", 0)
         node.add_feature("number_of_Bacillota", 0)
@@ -29,24 +35,29 @@ def initialize_node_features(tree: Tree):
         node.add_feature("number_of_bacterial", 0)  # Total bacterial count
 
 
-def annotate_tree_with_clusters(tree: Tree, data: pd.DataFrame, protein_contig_dict):
+def annotate_tree_with_clusters(tree: Tree, data: pd.DataFrame, protein_contig_dict: Dict[str, str]):
     """Annotate the tree based on the filtered data."""
     for _, row in data.iterrows():
         proteins = row["crassvirales_proteins"].split(", ")
         contigs = [extract_contig_id(protein_id) for protein_id in proteins]
+
         row_data = {
             "number_of_Bacteroidetes": row.get("number_of_Bacteroidetes", 0),
             "number_of_Actinobacteria": row.get("number_of_Actinobacteria", 0),
             "number_of_Bacillota": row.get("number_of_Bacillota", 0),
             "number_of_Proteobacteria": row.get("number_of_Proteobacteria", 0),
             "number_of_Other_bacteria": row.get("number_of_Other_bacteria", 0),
-            "number_of_viral": row.get("number_of_viral", 0)
+            "number_of_viral": row.get("number_of_viral", 0),
+
+            "cluster_name": row.get("cluster_name", ""),
+            "node_name": row.get("node_name", "")
         }
         find_mrca_and_annotate(tree, contigs, row_data, protein_contig_dict)
     return tree
 
 
-def annotate_tree(tree: Tree, annotations: pd.DataFrame, crassvirales_color_scheme: Dict[str, str], bacterial_phylum_colors: Dict[str, str]):
+def annotate_tree(tree: Tree, annotations: pd.DataFrame, crassvirales_color_scheme: Dict[str, str],
+                  bacterial_phylum_colors: Dict[str, str]):
     """Annotate each leaf with family and host phylum information."""
     protein_contig_dict = {}
     for leaf in tree.iter_leaves():
@@ -71,8 +82,10 @@ def annotate_tree(tree: Tree, annotations: pd.DataFrame, crassvirales_color_sche
                 nstyle["size"] = 8
                 leaf.set_style(nstyle)
 
-            family_face = TextFace(f"Family: {family}", fsize=10, fgcolor=crassvirales_color_scheme.get(family, "black"))
-            host_phylum_face = TextFace(f"Host Phylum: {host_phylum}", fsize=10, fgcolor=bacterial_phylum_colors.get(host_phylum, "black"))
+            family_face = TextFace(f"Family: {family}", fsize=10,
+                                   fgcolor=crassvirales_color_scheme.get(family, "black"))
+            host_phylum_face = TextFace(f"Host Phylum: {host_phylum}", fsize=10,
+                                        fgcolor=bacterial_phylum_colors.get(host_phylum, "black"))
             contig_id_face = TextFace(f"Genome: {contig_id}", fsize=10)
 
             leaf.add_face(family_face, column=0)
@@ -95,9 +108,6 @@ def find_mrca_and_annotate(tree: Tree, contigs: List[str], row_data: dict, prote
     mrca_node = tree.get_common_ancestor(protein_leaves)
     logger.debug(f"MRCA found for contigs {contigs}: {mrca_node}")
 
-    # Increment the number of clusters at the MRCA node
-    mrca_node.number_of_clusters += 1
-
     # Update bacterial and viral counts
     mrca_node.number_of_Bacteroidetes += row_data.get("number_of_Bacteroidetes", 0)
     mrca_node.number_of_Actinobacteria += row_data.get("number_of_Actinobacteria", 0)
@@ -115,30 +125,45 @@ def find_mrca_and_annotate(tree: Tree, contigs: List[str], row_data: dict, prote
         mrca_node.number_of_Other_bacteria
     )
 
-def add_bacterial_pie_chart(node):
-    """Add a pie chart to a node based on bacterial phyla ratios."""
-    pie_data = [
-        node.number_of_Bacteroidetes,
-        node.number_of_Actinobacteria,
-        node.number_of_Bacillota,
-        node.number_of_Proteobacteria,
-        node.number_of_Other_bacteria
-    ]
+    # Safely add to clusters and clades
+    cluster_name = str(row_data.get("cluster_name", ""))
+    node_name = str(row_data.get("node_name", ""))
 
-    total = sum(pie_data)
-    if total > 0:
-        pie_data_normalized = [(value / total) * 100 for value in pie_data]
-        colors = ["#ff7f00", "#ffff99", "#a6cee3", "#b15928", "#b2df8a"]  # Adjust colors as needed
-        pie_chart = faces.PieChartFace(pie_data_normalized, colors=colors, width=50, height=50)
-        node.add_face(pie_chart, column=0, position="branch-right")
+    if cluster_name and cluster_name != 'nan':
+        mrca_node.clusters.update([cluster_name])
+    if node_name and node_name != 'nan':
+        mrca_node.clades.update([node_name])
 
-        # Add bacterial protein count around bacterial phyla pie chart
-        bacterial_count_face = TextFace(f"Bacterial: {total}", fsize=10, fgcolor="black")
-        node.add_face(bacterial_count_face, column=0, position="branch-bottom")
+    # Update number_of_clusters and number_of_clades based on the sizes of the sets
+    mrca_node.number_of_clusters = len(mrca_node.clusters)
+    mrca_node.number_of_clades = len(mrca_node.clades)
+
+
+# def add_bacterial_pie_chart(node):
+#     """Add a pie chart to a node based on bacterial phyla ratios."""
+#     pie_data = [
+#         node.number_of_Bacteroidetes,
+#         node.number_of_Actinobacteria,
+#         node.number_of_Bacillota,
+#         node.number_of_Proteobacteria,
+#         node.number_of_Other_bacteria
+#     ]
+#
+#     total = sum(pie_data)
+#     if total > 0:
+#         pie_data_normalized = [(value / total) * 100 for value in pie_data]
+#         colors = ["#ff7f00", "#ffff99", "#a6cee3", "#b15928", "#b2df8a"]  # Adjust colors as needed
+#         pie_chart = faces.PieChartFace(pie_data_normalized, colors=colors, width=50, height=50)
+#         node.add_face(pie_chart, column=0, position="branch-right")
+#
+#         # Add bacterial protein count around bacterial phyla pie chart
+#         bacterial_count_face = TextFace(f"Bacterial: {total}", fsize=10, fgcolor="black")
+#         node.add_face(bacterial_count_face, column=0, position="branch-bottom")
 
 
 def add_combined_pie_chart(node):
-    """Add a combined pie chart to represent bacterial phyla and viral counts with node size based on number of clusters."""
+    """Add a combined pie chart to represent bacterial phyla and viral counts
+    with node size based on number of clusters."""
     pie_data = [
         node.number_of_Bacteroidetes,
         node.number_of_Actinobacteria,
@@ -169,7 +194,10 @@ def add_combined_pie_chart(node):
         node.add_face(pie_chart, column=0, position="branch-right")
 
         # Label the total protein count around the combined pie chart
-        total_count_face = TextFace(f"Total: {total}", fsize=10, fgcolor="black")
+        # total_count_face = TextFace(f"Total: {total}.", fsize=10, fgcolor="black")
+        total_count_face = TextFace(f"Number_of_clades: {node.number_of_clades}. "
+                                    f"Number_of_clusters: {node.number_of_clusters}. "
+                                    f"Total NCBI proteins: {total}.", fsize=10, fgcolor="black")
         node.add_face(total_count_face, column=0, position="branch-bottom")
 
 
@@ -200,17 +228,17 @@ def render_circular_tree(tree: Tree, output_file_base: str):
     logger.info(f"Saving tree as SVG to {svg_output_file}")
     tree.render(svg_output_file, tree_style=ts)
 
-    # Save as PNG
-    png_output_file = f"{output_file_base}.png"
-    logger.info(f"Saving tree as PNG to {png_output_file}")
-    tree.render(png_output_file, tree_style=ts, dpi=300)
+    # # Save as PNG
+    # png_output_file = f"{output_file_base}.png"
+    # logger.info(f"Saving tree as PNG to {png_output_file}")
+    # tree.render(png_output_file, tree_style=ts, dpi=300)
+    #
+    # # Save as PDF
+    # pdf_output_file = f"{output_file_base}.pdf"
+    # logger.info(f"Saving tree as PDF to {pdf_output_file}")
+    # tree.render(pdf_output_file, tree_style=ts)
 
-    # Save as PDF
-    pdf_output_file = f"{output_file_base}.pdf"
-    logger.info(f"Saving tree as PDF to {pdf_output_file}")
-    tree.render(pdf_output_file, tree_style=ts)
-
-    logger.info(f"Tree saved as SVG, PNG, and PDF formats with base name {output_file_base}")
+    logger.info(f"Tree saved as SVG format with base name {output_file_base}")
 
 
 if __name__ == "__main__":
@@ -222,7 +250,9 @@ if __name__ == "__main__":
     terl_tree_dir = "/mnt/c/crassvirales/phylomes/TerL_tree"
     tree_file = f"{terl_tree_dir}/terL_sequences_trimmed_merged_10gaps.treefile"
     annotation_file = "/mnt/c/crassvirales/phylomes/supplementary_tables/phylome_taxonomy_s1.txt"
-    cluster_data_file = "/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/2_trees_leaves/phylome_summary/tree_analysis_test/cluster_analysis_all_draco/rooted/concatenated_clusters_data.tsv"
+    cluster_data_file = "/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/" \
+                        "2_trees_leaves/phylome_summary/tree_analysis_test/cluster_analysis_all_draco/rooted/" \
+                        "concatenated_clusters_data.tsv"
     output_image_file = f"{terl_tree_dir}/annotated_tree_circular"
 
     # Define color schemes
