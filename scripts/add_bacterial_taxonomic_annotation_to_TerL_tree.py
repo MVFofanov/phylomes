@@ -1,3 +1,4 @@
+import csv
 import logging
 from ete3 import Tree, TreeStyle, NodeStyle, TextFace, faces
 import pandas as pd
@@ -15,8 +16,8 @@ def parse_tree(tree_file: str) -> Tree:
     return Tree(tree_file, format=1)
 
 
-def extract_contig_id(node_name: str) -> str:
-    return node_name.split('|')[0]
+def extract_contig_id(protein_name: str) -> str:
+    return protein_name.split('|')[0]
 
 
 def initialize_node_features(tree: Tree):
@@ -24,6 +25,8 @@ def initialize_node_features(tree: Tree):
     for node in tree.traverse():
         node.add_feature("clades", set())
         node.add_feature("clusters", set())
+        node.add_feature("crassvirales_proteins", [])
+        node.add_feature("mrca_node_names", [])
         node.add_feature("number_of_clusters", 0)
         node.add_feature("number_of_clades", 0)
         node.add_feature("number_of_Bacteroidetes", 0)
@@ -40,7 +43,6 @@ def annotate_tree_with_clusters(tree: Tree, data: pd.DataFrame, protein_contig_d
     for _, row in data.iterrows():
         proteins = row["crassvirales_proteins"].split(", ")
         contigs = [extract_contig_id(protein_id) for protein_id in proteins]
-
         row_data = {
             "number_of_Bacteroidetes": row.get("number_of_Bacteroidetes", 0),
             "number_of_Actinobacteria": row.get("number_of_Actinobacteria", 0),
@@ -48,60 +50,13 @@ def annotate_tree_with_clusters(tree: Tree, data: pd.DataFrame, protein_contig_d
             "number_of_Proteobacteria": row.get("number_of_Proteobacteria", 0),
             "number_of_Other_bacteria": row.get("number_of_Other_bacteria", 0),
             "number_of_viral": row.get("number_of_viral", 0),
-
             "cluster_name": row.get("cluster_name", ""),
-            "node_name": row.get("node_name", "")
+            "node_name": row.get("node_name", ""),
+            "crassvirales_proteins": proteins
         }
         find_mrca_and_annotate(tree, contigs, row_data, protein_contig_dict)
     return tree
 
-
-def annotate_tree(tree: Tree, annotations: pd.DataFrame, crassvirales_color_scheme: Dict[str, str],
-                  bacterial_phylum_colors: Dict[str, str]):
-    """Annotate each leaf with family and host phylum information."""
-    protein_contig_dict = {}
-    for leaf in tree.iter_leaves():
-        contig_id = extract_contig_id(leaf.name)
-        protein_contig_dict[leaf.name] = contig_id
-        annotation_row = annotations[annotations['contig_id'] == contig_id]
-
-        if not annotation_row.empty:
-            row_data = annotation_row.iloc[0].to_dict()
-            family = row_data.get('family_crassus', 'unknown')
-            host_phylum = row_data.get('host_phylum', 'unknown')
-
-            if family in crassvirales_color_scheme:
-                nstyle = NodeStyle()
-                nstyle["fgcolor"] = crassvirales_color_scheme[family]
-                nstyle["size"] = 8
-                leaf.set_style(nstyle)
-
-            if host_phylum in bacterial_phylum_colors:
-                nstyle = NodeStyle()
-                nstyle["fgcolor"] = bacterial_phylum_colors[host_phylum]
-                nstyle["size"] = 8
-                leaf.set_style(nstyle)
-
-            family_face = TextFace(f"Family: {family}", fsize=10,
-                                   fgcolor=crassvirales_color_scheme.get(family, "black"))
-            host_phylum_face = TextFace(f"Host Phylum: {host_phylum}", fsize=10,
-                                        fgcolor=bacterial_phylum_colors.get(host_phylum, "black"))
-            contig_id_face = TextFace(f"Genome: {contig_id}", fsize=10)
-
-            leaf.add_face(family_face, column=0)
-            leaf.add_face(host_phylum_face, column=1)
-            leaf.add_face(contig_id_face, column=2)
-
-    return protein_contig_dict
-
-
-def assign_internal_node_names(tree: Tree):
-    """Assign a unique name to each internal node."""
-    node_counter = 1
-    for node in tree.traverse():
-        if not node.is_leaf():
-            node.add_feature("node_name", f"node_{node_counter}")
-            node_counter += 1
 
 def find_mrca_and_annotate(tree: Tree, contigs: List[str], row_data: dict, protein_contig_dict):
     """Find the MRCA of given proteins and annotate it with cluster and bacterial counts."""
@@ -137,31 +92,32 @@ def find_mrca_and_annotate(tree: Tree, contigs: List[str], row_data: dict, prote
     cluster_name = str(row_data.get("cluster_name", ""))
     node_name = str(row_data.get("node_name", ""))
 
-    if cluster_name and cluster_name != 'nan':
+    if cluster_name and cluster_name != 'nan' and cluster_name not in mrca_node.clusters:
         mrca_node.clusters.add(cluster_name)
-    if node_name and node_name != 'nan':
+    if node_name and node_name != 'nan' and node_name not in mrca_node.clades:
         mrca_node.clades.add(node_name)
 
-    mrca_node.contigs = contigs
+    # Add Crassvirales protein names and MRCA node name to the features
+    mrca_node.crassvirales_proteins.extend(row_data.get("crassvirales_proteins", []))
+    mrca_node.mrca_node_names.append(mrca_node.name)  # Assuming mrca_node.name is the unique node name
 
     # Update number_of_clusters and number_of_clades based on the sizes of the sets
     mrca_node.number_of_clusters = len(mrca_node.clusters)
     mrca_node.number_of_clades = len(mrca_node.clades)
 
 
-def save_mrca_data(tree: Tree, output_file: str):
+def save_mrca_data_to_tsv(tree: Tree, output_file: str):
     """Save MRCA node information to a TSV file."""
-    data = []
+    rows = []
     for node in tree.traverse():
-        if not node.is_leaf() and node.number_of_clusters > 0:
-            row = {
-                "node_name": node.node_name if hasattr(node, "node_name") else "unknown",
+        if node.number_of_clusters > 0:
+            rows.append({
+                "node_name": node.name,
                 "number_of_clusters": node.number_of_clusters,
                 "number_of_clades": node.number_of_clades,
-                "contigs": ", ".join(node.clades),
-                # "crassvirales_proteins": ", ".join(protein_contig_dict.get(c, "") for c in node.clades),
-                "crassvirales_proteins": ", ".join(node.clades),
-                "clusters": ", ".join(node.clusters),
+                "mrca_node_names": ', '.join(node.mrca_node_names),
+                "crassvirales_proteins": ', '.join(node.crassvirales_proteins),
+                "clusters": ', '.join(node.clusters),
                 "number_of_Bacteroidetes": node.number_of_Bacteroidetes,
                 "number_of_Actinobacteria": node.number_of_Actinobacteria,
                 "number_of_Bacillota": node.number_of_Bacillota,
@@ -169,35 +125,12 @@ def save_mrca_data(tree: Tree, output_file: str):
                 "number_of_Other_bacteria": node.number_of_Other_bacteria,
                 "number_of_viral": node.number_of_viral,
                 "number_of_bacterial": node.number_of_bacterial
-            }
-            data.append(row)
+            })
 
-    # Save data to a TSV file
-    df = pd.DataFrame(data)
-    df.to_csv(output_file, sep="\t", index=False)
-    logger.info(f"Saved MRCA data to {output_file}")
-
-
-# def add_bacterial_pie_chart(node):
-#     """Add a pie chart to a node based on bacterial phyla ratios."""
-#     pie_data = [
-#         node.number_of_Bacteroidetes,
-#         node.number_of_Actinobacteria,
-#         node.number_of_Bacillota,
-#         node.number_of_Proteobacteria,
-#         node.number_of_Other_bacteria
-#     ]
-#
-#     total = sum(pie_data)
-#     if total > 0:
-#         pie_data_normalized = [(value / total) * 100 for value in pie_data]
-#         colors = ["#ff7f00", "#ffff99", "#a6cee3", "#b15928", "#b2df8a"]  # Adjust colors as needed
-#         pie_chart = faces.PieChartFace(pie_data_normalized, colors=colors, width=50, height=50)
-#         node.add_face(pie_chart, column=0, position="branch-right")
-#
-#         # Add bacterial protein count around bacterial phyla pie chart
-#         bacterial_count_face = TextFace(f"Bacterial: {total}", fsize=10, fgcolor="black")
-#         node.add_face(bacterial_count_face, column=0, position="branch-bottom")
+    # Convert to DataFrame and save as TSV
+    df = pd.DataFrame(rows)
+    df.to_csv(output_file, sep='\t', index=False)
+    logger.info(f"Saved MRCA node data to {output_file}")
 
 
 def add_combined_pie_chart(node):
@@ -271,17 +204,94 @@ def render_circular_tree(tree: Tree, output_file_base: str):
     logger.info(f"Saving tree as SVG to {svg_output_file}")
     tree.render(svg_output_file, tree_style=ts)
 
-    # # Save as PNG
-    # png_output_file = f"{output_file_base}.png"
-    # logger.info(f"Saving tree as PNG to {png_output_file}")
-    # tree.render(png_output_file, tree_style=ts, dpi=300)
-    #
-    # # Save as PDF
-    # pdf_output_file = f"{output_file_base}.pdf"
-    # logger.info(f"Saving tree as PDF to {pdf_output_file}")
-    # tree.render(pdf_output_file, tree_style=ts)
-
     logger.info(f"Tree saved as SVG format with base name {output_file_base}")
+
+
+def assign_internal_node_names(tree: Tree):
+    """Assign unique names to each internal node."""
+    node_counter = 1
+    for node in tree.traverse("postorder"):
+        # Only assign names to internal nodes (those without a name and with children)
+        if not node.is_leaf() and not node.name:
+            node.name = f"node_{node_counter}"
+            node_counter += 1
+
+
+def annotate_tree(tree: Tree, annotations: pd.DataFrame, crassvirales_color_scheme: Dict[str, str], bacterial_phylum_colors: Dict[str, str]) -> Dict[str, str]:
+    """Annotate each leaf with family and host phylum information."""
+    protein_contig_dict = {}
+    for leaf in tree.iter_leaves():
+        contig_id = extract_contig_id(leaf.name)
+        protein_contig_dict[leaf.name] = contig_id
+        annotation_row = annotations[annotations['contig_id'] == contig_id]
+
+        if not annotation_row.empty:
+            row_data = annotation_row.iloc[0].to_dict()
+            family = row_data.get('family_crassus', 'unknown')
+            host_phylum = row_data.get('host_phylum', 'unknown')
+
+            if family in crassvirales_color_scheme:
+                nstyle = NodeStyle()
+                nstyle["fgcolor"] = crassvirales_color_scheme[family]
+                nstyle["size"] = 8
+                leaf.set_style(nstyle)
+
+            if host_phylum in bacterial_phylum_colors:
+                nstyle = NodeStyle()
+                nstyle["fgcolor"] = bacterial_phylum_colors[host_phylum]
+                nstyle["size"] = 8
+                leaf.set_style(nstyle)
+
+            family_face = TextFace(f"Family: {family}", fsize=10, fgcolor=crassvirales_color_scheme.get(family, "black"))
+            host_phylum_face = TextFace(f"Host Phylum: {host_phylum}", fsize=10, fgcolor=bacterial_phylum_colors.get(host_phylum, "black"))
+            contig_id_face = TextFace(f"Genome: {contig_id}", fsize=10)
+
+            leaf.add_face(family_face, column=0)
+            leaf.add_face(host_phylum_face, column=1)
+            leaf.add_face(contig_id_face, column=2)
+
+    return protein_contig_dict
+
+
+def save_mrca_data(tree: Tree, output_file: str):
+    """Save MRCA node data into a TSV file."""
+    with open(output_file, 'w', newline='') as tsvfile:
+        fieldnames = [
+            'node_name', 'number_of_clusters', 'number_of_clades', 'contigs',
+            'crassvirales_proteins', 'clusters', 'number_of_Bacteroidetes',
+            'number_of_Actinobacteria', 'number_of_Bacillota',
+            'number_of_Proteobacteria', 'number_of_Other_bacteria',
+            'number_of_viral', 'number_of_bacterial'
+        ]
+        writer = csv.DictWriter(tsvfile, fieldnames=fieldnames, delimiter='\t')
+        writer.writeheader()
+
+        for node in tree.traverse():
+            # Check if node is an MRCA node with relevant data
+            if node.number_of_clusters > 0:
+                # Convert sets to comma-separated strings
+                contigs = ', '.join(node.contigs) if hasattr(node, 'contigs') else ''
+                clusters = ', '.join(node.clusters) if hasattr(node, 'clusters') else ''
+                crassvirales_proteins = ', '.join(set(node.crassvirales_proteins)) if hasattr(node,
+                                                                                         'crassvirales_proteins') else ''
+
+                writer.writerow({
+                    'node_name': node.name,
+                    'number_of_clusters': node.number_of_clusters,
+                    'number_of_clades': node.number_of_clades,
+                    'contigs': ', '.join(set([genome.split('|')[0] for genome in crassvirales_proteins.split(', ')])),
+                    'crassvirales_proteins': crassvirales_proteins,
+                    'clusters': clusters,
+                    'number_of_Bacteroidetes': node.number_of_Bacteroidetes,
+                    'number_of_Actinobacteria': node.number_of_Actinobacteria,
+                    'number_of_Bacillota': node.number_of_Bacillota,
+                    'number_of_Proteobacteria': node.number_of_Proteobacteria,
+                    'number_of_Other_bacteria': node.number_of_Other_bacteria,
+                    'number_of_viral': node.number_of_viral,
+                    'number_of_bacterial': node.number_of_bacterial
+                })
+
+    print(f"MRCA data saved to {output_file}")
 
 
 if __name__ == "__main__":
@@ -320,7 +330,7 @@ if __name__ == "__main__":
         'Other': '#b2df8a'
     }
 
-    # Load data and annotate tree
+    # Load data and parse tree
     annotations = load_annotations(annotation_file)
     tree = parse_tree(tree_file)
 
@@ -343,5 +353,5 @@ if __name__ == "__main__":
     # Render and save the circular tree as SVG
     render_circular_tree(tree, output_image_file)
 
-    # Save MRCA data to TSV file
+    # Save MRCA data to TSV
     save_mrca_data(tree, output_tsv_file)
