@@ -95,6 +95,14 @@ def annotate_tree(tree: Tree, annotations: pd.DataFrame, crassvirales_color_sche
     return protein_contig_dict
 
 
+def assign_internal_node_names(tree: Tree):
+    """Assign a unique name to each internal node."""
+    node_counter = 1
+    for node in tree.traverse():
+        if not node.is_leaf():
+            node.add_feature("node_name", f"node_{node_counter}")
+            node_counter += 1
+
 def find_mrca_and_annotate(tree: Tree, contigs: List[str], row_data: dict, protein_contig_dict):
     """Find the MRCA of given proteins and annotate it with cluster and bacterial counts."""
     # Collect TreeNode objects based on contigs
@@ -130,13 +138,44 @@ def find_mrca_and_annotate(tree: Tree, contigs: List[str], row_data: dict, prote
     node_name = str(row_data.get("node_name", ""))
 
     if cluster_name and cluster_name != 'nan':
-        mrca_node.clusters.update([cluster_name])
+        mrca_node.clusters.add(cluster_name)
     if node_name and node_name != 'nan':
-        mrca_node.clades.update([node_name])
+        mrca_node.clades.add(node_name)
+
+    mrca_node.contigs = contigs
 
     # Update number_of_clusters and number_of_clades based on the sizes of the sets
     mrca_node.number_of_clusters = len(mrca_node.clusters)
     mrca_node.number_of_clades = len(mrca_node.clades)
+
+
+def save_mrca_data(tree: Tree, output_file: str):
+    """Save MRCA node information to a TSV file."""
+    data = []
+    for node in tree.traverse():
+        if not node.is_leaf() and node.number_of_clusters > 0:
+            row = {
+                "node_name": node.node_name if hasattr(node, "node_name") else "unknown",
+                "number_of_clusters": node.number_of_clusters,
+                "number_of_clades": node.number_of_clades,
+                "contigs": ", ".join(node.clades),
+                # "crassvirales_proteins": ", ".join(protein_contig_dict.get(c, "") for c in node.clades),
+                "crassvirales_proteins": ", ".join(node.clades),
+                "clusters": ", ".join(node.clusters),
+                "number_of_Bacteroidetes": node.number_of_Bacteroidetes,
+                "number_of_Actinobacteria": node.number_of_Actinobacteria,
+                "number_of_Bacillota": node.number_of_Bacillota,
+                "number_of_Proteobacteria": node.number_of_Proteobacteria,
+                "number_of_Other_bacteria": node.number_of_Other_bacteria,
+                "number_of_viral": node.number_of_viral,
+                "number_of_bacterial": node.number_of_bacterial
+            }
+            data.append(row)
+
+    # Save data to a TSV file
+    df = pd.DataFrame(data)
+    df.to_csv(output_file, sep="\t", index=False)
+    logger.info(f"Saved MRCA data to {output_file}")
 
 
 # def add_bacterial_pie_chart(node):
@@ -162,8 +201,8 @@ def find_mrca_and_annotate(tree: Tree, contigs: List[str], row_data: dict, prote
 
 
 def add_combined_pie_chart(node):
-    """Add a combined pie chart to represent bacterial phyla and viral counts
-    with node size based on number of clusters."""
+    """Add a combined pie chart to represent bacterial phyla and viral counts,
+    with node size based on number of clusters, and display the node name."""
     pie_data = [
         node.number_of_Bacteroidetes,
         node.number_of_Actinobacteria,
@@ -193,8 +232,12 @@ def add_combined_pie_chart(node):
                                        height=50 + 3 * node.number_of_clusters)
         node.add_face(pie_chart, column=0, position="branch-right")
 
+        # Display node name on MRCA nodes
+        if hasattr(node, "node_name"):
+            node_name_face = TextFace(node.node_name, fsize=10, fgcolor="black")
+            node.add_face(node_name_face, column=0, position="branch-top")
+
         # Label the total protein count around the combined pie chart
-        # total_count_face = TextFace(f"Total: {total}.", fsize=10, fgcolor="black")
         total_count_face = TextFace(f"Number_of_clades: {node.number_of_clades}. "
                                     f"Number_of_clusters: {node.number_of_clusters}. "
                                     f"Total NCBI proteins: {total}.", fsize=10, fgcolor="black")
@@ -243,17 +286,16 @@ def render_circular_tree(tree: Tree, output_file_base: str):
 
 if __name__ == "__main__":
     # Configure logging
-    logging.basicConfig(level=logging.INFO)  # Change to logging.DEBUG to see debug messages
+    logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 
     # File paths
     terl_tree_dir = "/mnt/c/crassvirales/phylomes/TerL_tree"
     tree_file = f"{terl_tree_dir}/terL_sequences_trimmed_merged_10gaps.treefile"
     annotation_file = "/mnt/c/crassvirales/phylomes/supplementary_tables/phylome_taxonomy_s1.txt"
-    cluster_data_file = "/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/" \
-                        "2_trees_leaves/phylome_summary/tree_analysis_test/cluster_analysis_all_draco/rooted/" \
-                        "concatenated_clusters_data.tsv"
+    cluster_data_file = "/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/2_trees_leaves/phylome_summary/tree_analysis_test/cluster_analysis_all_draco/rooted/concatenated_clusters_data.tsv"
     output_image_file = f"{terl_tree_dir}/annotated_tree_circular"
+    output_tsv_file = f"{terl_tree_dir}/annotated_tree_mrca_node_data.tsv"
 
     # Define color schemes
     crassvirales_color_scheme = {
@@ -282,6 +324,9 @@ if __name__ == "__main__":
     annotations = load_annotations(annotation_file)
     tree = parse_tree(tree_file)
 
+    # Assign unique names to internal nodes
+    assign_internal_node_names(tree)
+
     # Annotate tree based on family and host phylum
     protein_contig_dict = annotate_tree(tree, annotations, crassvirales_color_scheme, bacterial_phylum_colors)
 
@@ -295,5 +340,8 @@ if __name__ == "__main__":
     # Annotate tree with cluster data
     tree = annotate_tree_with_clusters(tree, filtered_data, protein_contig_dict)
 
-    # Render and save the circular tree as PNG and PDF
+    # Render and save the circular tree as SVG
     render_circular_tree(tree, output_image_file)
+
+    # Save MRCA data to TSV file
+    save_mrca_data(tree, output_tsv_file)
