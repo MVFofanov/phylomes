@@ -43,6 +43,11 @@ def annotate_tree_with_clusters(tree: Tree, data: pd.DataFrame, protein_contig_d
     for _, row in data.iterrows():
         proteins = row["crassvirales_proteins"].split(", ")
         contigs = [extract_contig_id(protein_id) for protein_id in proteins]
+        # Generate a new node name combining cluster_name and node_name
+        cluster_name = str(row.get("cluster_name", ""))
+        original_node_name = str(row.get("node_name", ""))
+        combined_node_name = f"{cluster_name}_{original_node_name}" if cluster_name and original_node_name else original_node_name
+
         row_data = {
             "number_of_Bacteroidetes": row.get("number_of_Bacteroidetes", 0),
             "number_of_Actinobacteria": row.get("number_of_Actinobacteria", 0),
@@ -50,12 +55,13 @@ def annotate_tree_with_clusters(tree: Tree, data: pd.DataFrame, protein_contig_d
             "number_of_Proteobacteria": row.get("number_of_Proteobacteria", 0),
             "number_of_Other_bacteria": row.get("number_of_Other_bacteria", 0),
             "number_of_viral": row.get("number_of_viral", 0),
-            "cluster_name": row.get("cluster_name", ""),
-            "node_name": row.get("node_name", ""),
+            "cluster_name": cluster_name,
+            "node_name": combined_node_name,
             "crassvirales_proteins": proteins
         }
         find_mrca_and_annotate(tree, contigs, row_data, protein_contig_dict)
     return tree
+
 
 
 def find_mrca_and_annotate(tree: Tree, contigs: List[str], row_data: dict, protein_contig_dict):
@@ -171,7 +177,8 @@ def add_combined_pie_chart(node):
             node.add_face(node_name_face, column=0, position="branch-top")
 
         # Label the total protein count around the combined pie chart
-        total_count_face = TextFace(f"Number_of_clades: {node.number_of_clades}. "
+        total_count_face = TextFace(#f"Node_name: {node.node_name}. "
+                                    f"Number_of_clades: {node.number_of_clades}. "
                                     f"Number_of_clusters: {node.number_of_clusters}. "
                                     f"Total NCBI proteins: {total}.", fsize=10, fgcolor="black")
         node.add_face(total_count_face, column=0, position="branch-bottom")
@@ -211,7 +218,7 @@ def assign_internal_node_names(tree: Tree):
     """Assign unique names to each internal node."""
     node_counter = 1
     for node in tree.traverse("postorder"):
-        # Only assign names to internal nodes (those without a name and with children)
+        # Only assign names to internal nodes without a name
         if not node.is_leaf() and not node.name:
             node.name = f"node_{node_counter}"
             node_counter += 1
@@ -254,12 +261,12 @@ def annotate_tree(tree: Tree, annotations: pd.DataFrame, crassvirales_color_sche
 
 
 def save_mrca_data(tree: Tree, output_file: str):
-    """Save MRCA node data into a TSV file."""
+    """Save all internal node data into a TSV file."""
     with open(output_file, 'w', newline='') as tsvfile:
         fieldnames = [
             'node_name', 'number_of_clusters', 'number_of_clades', 'contigs',
-            'crassvirales_proteins', 'clusters', 'number_of_Bacteroidetes',
-            'number_of_Actinobacteria', 'number_of_Bacillota',
+            'crassvirales_proteins', 'clusters', 'mrca_node_names',
+            'number_of_Bacteroidetes', 'number_of_Actinobacteria', 'number_of_Bacillota',
             'number_of_Proteobacteria', 'number_of_Other_bacteria',
             'number_of_viral', 'number_of_bacterial'
         ]
@@ -267,21 +274,22 @@ def save_mrca_data(tree: Tree, output_file: str):
         writer.writeheader()
 
         for node in tree.traverse():
-            # Check if node is an MRCA node with relevant data
-            if node.number_of_clusters > 0:
+            # Include all internal nodes with valid names
+            if not node.is_leaf() and node.name.startswith("node_"):
                 # Convert sets to comma-separated strings
-                contigs = ', '.join(node.contigs) if hasattr(node, 'contigs') else ''
-                clusters = ', '.join(node.clusters) if hasattr(node, 'clusters') else ''
-                crassvirales_proteins = ', '.join(set(node.crassvirales_proteins)) if hasattr(node,
-                                                                                         'crassvirales_proteins') else ''
+                contigs = ', '.join(set([protein.split('|')[0] for protein in node.crassvirales_proteins]))
+                clusters = ', '.join(node.clusters)
+                crassvirales_proteins = ', '.join(node.crassvirales_proteins)
+                mrca_node_names = ', '.join(node.mrca_node_names) if hasattr(node, 'mrca_node_names') else ''
 
                 writer.writerow({
                     'node_name': node.name,
                     'number_of_clusters': node.number_of_clusters,
                     'number_of_clades': node.number_of_clades,
-                    'contigs': ', '.join(set([genome.split('|')[0] for genome in crassvirales_proteins.split(', ')])),
+                    'contigs': contigs,
                     'crassvirales_proteins': crassvirales_proteins,
                     'clusters': clusters,
+                    'mrca_node_names': mrca_node_names,  # Include clade names here
                     'number_of_Bacteroidetes': node.number_of_Bacteroidetes,
                     'number_of_Actinobacteria': node.number_of_Actinobacteria,
                     'number_of_Bacillota': node.number_of_Bacillota,
@@ -291,7 +299,8 @@ def save_mrca_data(tree: Tree, output_file: str):
                     'number_of_bacterial': node.number_of_bacterial
                 })
 
-    print(f"MRCA data saved to {output_file}")
+    logger.info(f"All internal node data saved to {output_file}")
+
 
 
 if __name__ == "__main__":
