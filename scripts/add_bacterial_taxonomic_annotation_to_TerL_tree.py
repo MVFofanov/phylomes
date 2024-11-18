@@ -48,7 +48,8 @@ def assign_internal_node_names(tree: Tree) -> None:
     node_counter = 1
     for node in tree.traverse("postorder"):
         # Only assign names to internal nodes without a name
-        if not node.is_leaf() and not node.name:
+        # if not node.is_leaf() and not node.name:
+        if not node.is_leaf():
             node.name = f"node_{node_counter}"
             node_counter += 1
 
@@ -228,7 +229,7 @@ def add_combined_pie_chart(node: TreeNode) -> None:
             node.add_face(node_name_face, column=0, position="branch-top")
 
         # Label the total protein count around the combined pie chart
-        total_count_face = TextFace(#f"Node_name: {node.node_name}. "
+        total_count_face = TextFace(f"Node_name: {node.name}. "
                                     f"Number_of_clades: {node.number_of_clades}. "
                                     f"Number_of_clusters: {node.number_of_clusters}. "
                                     f"Total NCBI proteins: {total}.", fsize=10, fgcolor="black")
@@ -280,7 +281,8 @@ def save_mrca_data(tree: Tree, output_file: str):
 
         for node in tree.traverse():
             # Include all internal nodes with valid names
-            if not node.is_leaf() and node.name.startswith("node_"):
+            # if not node.is_leaf() and node.name.startswith("node_") and node.number_of_clades > 0:
+            if not node.is_leaf() and node.number_of_clades > 0:
                 # Convert sets to comma-separated strings
                 contigs = ', '.join(set([protein.split('|')[0] for protein in node.crassvirales_proteins]))
                 clusters = ', '.join(node.clusters)
