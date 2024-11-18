@@ -184,7 +184,7 @@ def find_mrca_and_annotate(terl_tree: Tree, crassvirales_contigs: List[str], nod
 
     # Add Crassvirales protein names and MRCA node name to the features
     mrca_node.crassvirales_proteins.extend(node_annotation.get("crassvirales_proteins", []))
-    mrca_node.mrca_node_names.append(mrca_node.name)  # Assuming mrca_node.name is the unique node name
+    mrca_node.mrca_node_names.append(node_annotation.get("node_name", ''))  # Assuming mrca_node.name is the unique node name
 
     # Update number_of_clusters and number_of_clades based on the sizes of the sets
     mrca_node.number_of_clusters = len(mrca_node.clusters)
@@ -284,10 +284,11 @@ def save_mrca_data(tree: Tree, output_file: str):
             # if not node.is_leaf() and node.name.startswith("node_") and node.number_of_clades > 0:
             if not node.is_leaf() and node.number_of_clades > 0:
                 # Convert sets to comma-separated strings
-                contigs = ', '.join(set([protein.split('|')[0] for protein in node.crassvirales_proteins]))
+                contigs = ', '.join(sorted(set([protein.split('|')[0] for protein in node.crassvirales_proteins])))
                 clusters = ', '.join(node.clusters)
-                crassvirales_proteins = ', '.join(node.crassvirales_proteins)
-                mrca_node_names = ', '.join(node.mrca_node_names) if hasattr(node, 'mrca_node_names') else ''
+                crassvirales_proteins = ', '.join(sorted(set(node.crassvirales_proteins)))
+                mrca_node_names = ', '.join(sorted(set(node.mrca_node_names))) \
+                    if hasattr(node, 'mrca_node_names') else ''
 
                 writer.writerow({
                     'node_name': node.name,
