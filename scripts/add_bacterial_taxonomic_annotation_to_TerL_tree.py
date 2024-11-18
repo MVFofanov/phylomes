@@ -1,12 +1,15 @@
 import csv
 import logging
+import os
+from typing import Dict, List
+
 from ete3 import Tree, TreeStyle, NodeStyle, TextFace, faces
 import pandas as pd
-from typing import Dict, List
-import os
+
 
 # Ensure Qt offscreen rendering
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
+
 
 def load_annotations(annotation_file: str) -> pd.DataFrame:
     return pd.read_csv(annotation_file, sep="\t")
@@ -16,7 +19,7 @@ def parse_tree(tree_file: str) -> Tree:
     return Tree(tree_file, format=1)
 
 
-def assign_internal_node_names(tree: Tree):
+def assign_internal_node_names(tree: Tree) -> None:
     """Assign unique names to each internal node."""
     node_counter = 1
     for node in tree.traverse("postorder"):
@@ -26,7 +29,8 @@ def assign_internal_node_names(tree: Tree):
             node_counter += 1
 
 
-def annotate_tree(tree: Tree, annotations: pd.DataFrame, crassvirales_color_scheme: Dict[str, str], bacterial_phylum_colors: Dict[str, str]) -> Dict[str, str]:
+def annotate_tree(tree: Tree, annotations: pd.DataFrame, crassvirales_color_scheme: Dict[str, str],
+                  bacterial_phylum_colors: Dict[str, str]) -> Dict[str, str]:
     """Annotate each leaf with family and host phylum information."""
     protein_contig_dict = {}
     for leaf in tree.iter_leaves():
@@ -51,8 +55,10 @@ def annotate_tree(tree: Tree, annotations: pd.DataFrame, crassvirales_color_sche
                 nstyle["size"] = 8
                 leaf.set_style(nstyle)
 
-            family_face = TextFace(f"Family: {family}", fsize=10, fgcolor=crassvirales_color_scheme.get(family, "black"))
-            host_phylum_face = TextFace(f"Host Phylum: {host_phylum}", fsize=10, fgcolor=bacterial_phylum_colors.get(host_phylum, "black"))
+            family_face = TextFace(f"Family: {family}", fsize=10,
+                                   fgcolor=crassvirales_color_scheme.get(family, "black"))
+            host_phylum_face = TextFace(f"Host Phylum: {host_phylum}", fsize=10,
+                                        fgcolor=bacterial_phylum_colors.get(host_phylum, "black"))
             contig_id_face = TextFace(f"Genome: {contig_id}", fsize=10)
 
             leaf.add_face(family_face, column=0)
@@ -92,7 +98,8 @@ def annotate_tree_with_clusters(tree: Tree, data: pd.DataFrame, protein_contig_d
         # Generate a new node name combining cluster_name and node_name
         cluster_name = str(row.get("cluster_name", ""))
         original_node_name = str(row.get("node_name", ""))
-        combined_node_name = f"{cluster_name}_{original_node_name}" if cluster_name and original_node_name else original_node_name
+        combined_node_name = f"{cluster_name}_{original_node_name}" if cluster_name and original_node_name \
+            else original_node_name
 
         row_data = {
             "number_of_Bacteroidetes": row.get("number_of_Bacteroidetes", 0),
@@ -312,7 +319,9 @@ if __name__ == "__main__":
     terl_tree_dir = "/mnt/c/crassvirales/phylomes/TerL_tree"
     tree_file = f"{terl_tree_dir}/terL_sequences_trimmed_merged_10gaps.treefile"
     annotation_file = "/mnt/c/crassvirales/phylomes/supplementary_tables/phylome_taxonomy_s1.txt"
-    cluster_data_file = "/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/2_trees_leaves/phylome_summary/tree_analysis_test/cluster_analysis_all_draco/rooted/concatenated_clusters_data.tsv"
+    cluster_data_file = "/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/" \
+                        "2_trees_leaves/phylome_summary/tree_analysis_test/cluster_analysis_all_draco/rooted/" \
+                        "concatenated_clusters_data.tsv"
     output_image_file = f"{terl_tree_dir}/annotated_tree_circular"
     output_tsv_file = f"{terl_tree_dir}/annotated_tree_mrca_node_data.tsv"
 
