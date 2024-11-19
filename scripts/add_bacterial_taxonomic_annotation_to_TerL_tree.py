@@ -4,11 +4,14 @@ import os
 from typing import Dict, List
 
 from ete3 import Tree, TreeStyle, TreeNode, NodeStyle, TextFace, faces
+import matplotlib
+import matplotlib.pyplot as plt
 import pandas as pd
 
-
+matplotlib.use('Agg')
 # Ensure Qt offscreen rendering
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
+
 
 # Global color schemes
 CRASSVIRALES_COLOR_SCHEME = {
@@ -32,6 +35,17 @@ BACTERIAL_PHYLUM_COLORS = {
     'p__Pseudomonadota': '#b15928',  # Brown
     'p__Uroviricota': '#cab2d6',     # Lavender
     'Other': '#b2df8a'               # Light Green
+}
+
+# Define colors for bacterial phyla and viral
+CATEGORY_COLORS = {
+    'Bacteroidetes': '#ff7f00',  # Orange
+    'Actinobacteria': '#ffff99',  # Pale Yellow
+    'Bacillota': '#a6cee3',  # Light Blue
+    'Proteobacteria': '#b15928',  # Brown
+    'Other_bacteria': '#b2df8a',  # Light Green
+    'Viral': '#6a3d9a',  # Purple
+    'None': 'black'  # Black for zero counts
 }
 
 
@@ -310,6 +324,67 @@ def save_mrca_data(tree: Tree, output_file: str):
     logger.info(f"All internal node data saved to {output_file}")
 
 
+def create_number_of_clusters_vs_number_of_clade_scatterplot(input_file: str, output_file: str):
+    # Read the data
+    data = pd.read_csv(input_file, sep="\t")
+
+    # # Log data types and preview
+    # logger.info("Data types:\n%s", data.dtypes)
+    # logger.info("Data preview:\n%s", data.head())
+    #
+    # # Columns to check for max category
+    # categories = [
+    #     'number_of_Bacteroidetes',
+    #     'number_of_Actinobacteria',
+    #     'number_of_Bacillota',
+    #     'number_of_Proteobacteria',
+    #     'number_of_Other_bacteria',
+    #     'number_of_viral'
+    # ]
+    #
+    # # Ensure all columns are present
+    # for category in categories:
+    #     if category not in data.columns:
+    #         raise ValueError(f"Missing required column: {category}")
+    #
+    # # Convert all category columns to numeric, replacing invalid data with 0
+    # for category in categories:
+    #     data[category] = pd.to_numeric(data[category], errors='coerce').fillna(0)
+    #
+    # # Function to determine color based on the largest category
+    # def get_color(row):
+    #     row_values = row[categories]
+    #     logger.debug("Row values: %s", row_values.to_dict())  # Log the row for debugging
+    #     max_value = row_values.max()
+    #     if max_value == 0:
+    #         return CATEGORY_COLORS['None']
+    #     max_category = row_values.idxmax().replace('number_of_', '')
+    #     return CATEGORY_COLORS.get(max_category, 'black')
+
+    # # Debugging: Log assigned colors and categories
+    # data['max_category'] = data[categories].idxmax(axis=1).replace({'number_of_': ''}, regex=True)
+    # logger.info("Processed data with colors:\n%s",
+    #             data[['number_of_clusters', 'number_of_clades', 'max_category', 'color']].head())
+    #
+    # # Apply the color function
+    # data['color'] = data.apply(get_color, axis=1)
+
+    # Scatter plot
+    plt.figure(figsize=(10, 8))
+    # plt.scatter(data['number_of_clusters'], data['number_of_clades'], c=data['color'], edgecolor='k', alpha=0.7)
+    plt.scatter(data['number_of_clusters'], data['number_of_clades'])
+    plt.xlabel('Number of Clusters')
+    plt.ylabel('Number of Clades')
+    plt.title('Number of Clusters vs. Number of Clades')
+    plt.grid(True)
+
+    # Save the plot
+    plt.savefig(output_file)
+    plt.close()
+
+    logger.info(f"Scatterplot saved as {output_file}")
+
+
 if __name__ == "__main__":
     # Configure logging
     logging.basicConfig(level=logging.INFO)
@@ -324,29 +399,32 @@ if __name__ == "__main__":
                         "concatenated_clusters_data.tsv"
     output_image_file = f"{terl_tree_dir}/annotated_tree_circular"
     output_tsv_file = f"{terl_tree_dir}/annotated_tree_mrca_node_data.tsv"
+    output_scatterplot = f"{terl_tree_dir}/number_of_clusters_vs_number_of_clade_scatterplot.png"
 
-    # Load data and parse tree
-    annotations = load_annotations(annotation_file)
-    tree = parse_tree(tree_file)
+    # # Load data and parse tree
+    # annotations = load_annotations(annotation_file)
+    # tree = parse_tree(tree_file)
+    #
+    # # Assign unique names to internal nodes
+    # assign_internal_node_names(tree)
+    #
+    # # Annotate tree based on family and host phylum
+    # protein_contig_dict = annotate_tree(tree, annotations)
+    #
+    # # Load and filter cluster data
+    # cluster_data = pd.read_csv(cluster_data_file, sep='\t')
+    # filtered_data = cluster_data[cluster_data['threshold'] == 90]
+    #
+    # # Initialize node features
+    # initialize_node_features(tree)
+    #
+    # # Annotate tree with cluster data
+    # tree = annotate_tree_with_clusters(tree, filtered_data, protein_contig_dict)
+    #
+    # # Render and save the circular tree as SVG
+    # render_circular_tree(tree, output_image_file)
+    #
+    # # Save MRCA data to TSV
+    # save_mrca_data(tree, output_tsv_file)
 
-    # Assign unique names to internal nodes
-    assign_internal_node_names(tree)
-
-    # Annotate tree based on family and host phylum
-    protein_contig_dict = annotate_tree(tree, annotations)
-
-    # Load and filter cluster data
-    cluster_data = pd.read_csv(cluster_data_file, sep='\t')
-    filtered_data = cluster_data[cluster_data['threshold'] == 90]
-
-    # Initialize node features
-    initialize_node_features(tree)
-
-    # Annotate tree with cluster data
-    tree = annotate_tree_with_clusters(tree, filtered_data, protein_contig_dict)
-
-    # Render and save the circular tree as SVG
-    render_circular_tree(tree, output_image_file)
-
-    # Save MRCA data to TSV
-    save_mrca_data(tree, output_tsv_file)
+    create_number_of_clusters_vs_number_of_clade_scatterplot(output_tsv_file, output_scatterplot)
