@@ -6,6 +6,7 @@ from typing import Dict, List
 from ete3 import Tree, TreeStyle, TreeNode, NodeStyle, TextFace, faces
 import matplotlib
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 
 matplotlib.use('Agg')
@@ -324,7 +325,7 @@ def save_mrca_data(tree: Tree, output_file: str):
     logger.info(f"All internal node data saved to {output_file}")
 
 
-def create_number_of_clusters_vs_number_of_clade_scatterplot(input_file: str, output_file: str):
+def create_number_of_clades_vs_number_of_clusters_scatterplot(input_file: str, output_file: str):
     # Read the data
     data = pd.read_csv(input_file, sep="\t")
 
@@ -372,10 +373,33 @@ def create_number_of_clusters_vs_number_of_clade_scatterplot(input_file: str, ou
     # Scatter plot
     plt.figure(figsize=(10, 8))
     # plt.scatter(data['number_of_clusters'], data['number_of_clades'], c=data['color'], edgecolor='k', alpha=0.7)
-    plt.scatter(data['number_of_clusters'], data['number_of_clades'])
-    plt.xlabel('Number of Clusters')
-    plt.ylabel('Number of Clades')
-    plt.title('Number of Clusters vs. Number of Clades')
+    plt.scatter(data['number_of_clades'], data['number_of_clusters'])
+    plt.xlabel('Number of Clades')
+    plt.ylabel('Number of Clusters')
+    plt.title('Number of Clades vs. Number of Clusters')
+    plt.grid(True)
+
+    # Save the plot
+    plt.savefig(output_file)
+    plt.close()
+
+    logger.info(f"Scatterplot saved as {output_file}")
+
+
+def create_number_of_clades_vs_number_of_bacterial_scatterplot(input_file: str, output_file: str):
+    # Read the data
+    data = pd.read_csv(input_file, sep="\t")
+
+    # Apply log10 transformation to the relevant columns
+    data['log_number_of_clades'] = np.log10(data['number_of_clades'].replace(0, np.nan)).fillna(0)
+    data['log_number_of_bacterial'] = np.log10(data['number_of_bacterial'].replace(0, np.nan)).fillna(0)
+
+    # Scatter plot
+    plt.figure(figsize=(10, 8))
+    plt.scatter(data['log_number_of_clades'], data['log_number_of_bacterial'], alpha=0.7, edgecolor='k')
+    plt.xlabel('Log10(Number of Clades)')
+    plt.ylabel('Log10(Number of Bacterial)')
+    plt.title('Log10(Number of Clades) vs. Log10(Number of Bacterial)')
     plt.grid(True)
 
     # Save the plot
@@ -399,7 +423,8 @@ if __name__ == "__main__":
                         "concatenated_clusters_data.tsv"
     output_image_file = f"{terl_tree_dir}/annotated_tree_circular"
     output_tsv_file = f"{terl_tree_dir}/annotated_tree_mrca_node_data.tsv"
-    output_scatterplot = f"{terl_tree_dir}/number_of_clusters_vs_number_of_clade_scatterplot.png"
+    output_scatterplot_clades_vs_clusters = f"{terl_tree_dir}/number_of_clades_vs_number_of_clusters_scatterplot.png"
+    output_scatterplot_clades_vs_bacterial = f"{terl_tree_dir}/number_of_clades_vs_number_of_bacterial_scatterplot.png"
 
     # # Load data and parse tree
     # annotations = load_annotations(annotation_file)
@@ -427,4 +452,6 @@ if __name__ == "__main__":
     # # Save MRCA data to TSV
     # save_mrca_data(tree, output_tsv_file)
 
-    create_number_of_clusters_vs_number_of_clade_scatterplot(output_tsv_file, output_scatterplot)
+    create_number_of_clades_vs_number_of_clusters_scatterplot(output_tsv_file, output_scatterplot_clades_vs_clusters)
+
+    create_number_of_clades_vs_number_of_bacterial_scatterplot(output_tsv_file, output_scatterplot_clades_vs_bacterial)
