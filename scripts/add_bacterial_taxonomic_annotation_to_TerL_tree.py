@@ -222,9 +222,9 @@ def find_mrca_and_annotate(terl_tree: Tree, crassvirales_contigs: List[str], nod
     mrca_node.number_of_clades = len(mrca_node.clades)
 
 
-def add_combined_pie_chart(node: TreeNode) -> None:
+def add_combined_pie_chart(node: TreeNode, size_attribute: str) -> None:
     """Add a combined pie chart to represent bacterial phyla and viral counts,
-    with node size based on number of clusters, and display the node name."""
+    with node size based on a specified attribute."""
     pie_data = [
         node.number_of_Bacteroidetes,
         node.number_of_Actinobacteria,
@@ -241,17 +241,22 @@ def add_combined_pie_chart(node: TreeNode) -> None:
 
         # Colors for each segment: bacterial phyla and viral
         colors = [
-            BACTERIAL_PHYLUM_COLORS['p__Bacteroidetes'], # "#ff7f00",  # Bacteroidetes
-            BACTERIAL_PHYLUM_COLORS['p__Actinobacteria'], # "#ffff99",  # Actinobacteria
-            BACTERIAL_PHYLUM_COLORS['p__Bacillota'], # "#a6cee3",  # Bacillota
-            BACTERIAL_PHYLUM_COLORS['p__Proteobacteria'], # "#b15928",  # Proteobacteria
-            BACTERIAL_PHYLUM_COLORS['Other'], # "#b2df8a",  # Other bacteria
+            BACTERIAL_PHYLUM_COLORS['p__Bacteroidetes'],  # Orange
+            BACTERIAL_PHYLUM_COLORS['p__Actinobacteria'],  # Pale Yellow
+            BACTERIAL_PHYLUM_COLORS['p__Bacillota'],  # Light Blue
+            BACTERIAL_PHYLUM_COLORS['p__Proteobacteria'],  # Brown
+            BACTERIAL_PHYLUM_COLORS['Other'],  # Light Green
             "#6a3d9a"  # Viral (purple)
         ]
 
-        # Create a pie chart face with size proportional to the number of clusters
-        pie_chart = faces.PieChartFace(pie_data_normalized, colors=colors, width=50 + 3 * node.number_of_clusters,
-                                       height=50 + 3 * node.number_of_clusters)
+        # Dynamically determine the size of the pie chart based on the size_attribute
+        pie_size = getattr(node, size_attribute, 0)
+        pie_chart = faces.PieChartFace(
+            pie_data_normalized,
+            colors=colors,
+            width=50 + 3 * pie_size,
+            height=50 + 3 * pie_size
+        )
         node.add_face(pie_chart, column=0, position="branch-right")
 
         # Display node name on MRCA nodes
@@ -260,15 +265,19 @@ def add_combined_pie_chart(node: TreeNode) -> None:
             node.add_face(node_name_face, column=0, position="branch-top")
 
         # Label the total protein count around the combined pie chart
-        total_count_face = TextFace(f"Node_name: {node.name}. "
-                                    f"Number_of_clades: {node.number_of_clades}. "
-                                    f"Number_of_clusters: {node.number_of_clusters}. "
-                                    f"Total NCBI proteins: {total}.", fsize=10, fgcolor="black")
+        total_count_face = TextFace(
+            f"Node_name: {node.name}. "
+            f"Number_of_clades: {node.number_of_clades}. "
+            f"Number_of_clusters: {node.number_of_clusters}. "
+            f"Total NCBI proteins: {total}.",
+            fsize=10,
+            fgcolor="black"
+        )
         node.add_face(total_count_face, column=0, position="branch-bottom")
 
 
-def render_circular_tree(terl_tree: Tree, output_file_base: str):
-    """Render the tree with combined pie charts and node size representing number of clusters."""
+def render_circular_tree(terl_tree: Tree, output_file_base: str, size_attribute: str):
+    """Render the tree with combined pie charts and node size representing the specified attribute."""
     ts = TreeStyle()
     ts.mode = "c"
     ts.show_leaf_name = False
@@ -277,9 +286,9 @@ def render_circular_tree(terl_tree: Tree, output_file_base: str):
     ts.scale = 200  # Adjust scale as needed
 
     for node in terl_tree.traverse():
-        if node.number_of_clusters > 0:
-            # Add the combined pie chart
-            add_combined_pie_chart(node)
+        if getattr(node, size_attribute, 0) > 0:
+            # Add the combined pie chart based on the specified size attribute
+            add_combined_pie_chart(node, size_attribute)
 
             # Adjust node style (only size based on number of clusters, no extra node dot needed)
             nstyle = NodeStyle()
@@ -287,12 +296,12 @@ def render_circular_tree(terl_tree: Tree, output_file_base: str):
             node.set_style(nstyle)
 
         else:
-            logger.debug(f"Skipping node with number_of_clusters = {node.number_of_clusters}")
+            logger.debug(f"Skipping node with {size_attribute} = {getattr(node, size_attribute, 0)}")
 
     # Save as SVG
     svg_output_file = f"{output_file_base}.svg"
     logger.info(f"Saving tree as SVG to {svg_output_file}")
-    tree.render(svg_output_file, tree_style=ts)
+    terl_tree.render(svg_output_file, tree_style=ts)
 
     logger.info(f"Tree saved as SVG format with base name {output_file_base}")
 
@@ -485,37 +494,43 @@ if __name__ == "__main__":
     cluster_data_file = "/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/" \
                         "2_trees_leaves/phylome_summary/tree_analysis_test/cluster_analysis_all_draco/rooted/" \
                         "concatenated_clusters_data.tsv"
-    output_image_file = f"{terl_tree_dir}/annotated_tree_circular"
     output_tsv_file = f"{terl_tree_dir}/annotated_tree_mrca_node_data.tsv"
     output_scatterplot_clades_vs_clusters = f"{terl_tree_dir}/number_of_clades_vs_number_of_clusters_scatterplot.png"
     output_scatterplot_clades_vs_bacterial = f"{terl_tree_dir}/number_of_clades_vs_number_of_bacterial_scatterplot.png"
 
-    # # Load data and parse tree
-    # annotations = load_annotations(annotation_file)
-    # tree = parse_tree(tree_file)
-    #
-    # # Assign unique names to internal nodes
-    # assign_internal_node_names(tree)
-    #
-    # # Annotate tree based on family and host phylum
-    # protein_contig_dict = annotate_tree(tree, annotations)
-    #
-    # # Load and filter cluster data
-    # cluster_data = pd.read_csv(cluster_data_file, sep='\t')
-    # filtered_data = cluster_data[cluster_data['threshold'] == 90]
-    #
-    # # Initialize node features
-    # initialize_node_features(tree)
-    #
-    # # Annotate tree with cluster data
-    # tree = annotate_tree_with_clusters(tree, filtered_data, protein_contig_dict)
-    #
-    # # Render and save the circular tree as SVG
-    # render_circular_tree(tree, output_image_file)
-    #
-    # # Save MRCA data to TSV
-    # save_mrca_data(tree, output_tsv_file)
+    # Load data and parse tree
+    annotations = load_annotations(annotation_file)
+    tree = parse_tree(tree_file)
 
+    # Assign unique names to internal nodes
+    assign_internal_node_names(tree)
+
+    # Annotate tree based on family and host phylum
+    protein_contig_dict = annotate_tree(tree, annotations)
+
+    # Load and filter cluster data
+    cluster_data = pd.read_csv(cluster_data_file, sep='\t')
+    filtered_data = cluster_data[cluster_data['threshold'] == 90]
+
+    # Initialize node features
+    initialize_node_features(tree)
+
+    # Annotate tree with cluster data
+    tree = annotate_tree_with_clusters(tree, filtered_data, protein_contig_dict)
+
+    # Save MRCA data to TSV
+    save_mrca_data(tree, output_tsv_file)
+
+    # Create separate tree copies for different pie chart visualizations
+    tree_clusters = tree.copy()
+    tree_clades = tree.copy()
+    tree_bacterial = tree.copy()
+
+    # Render and save each tree
+    render_circular_tree(tree_clusters, f"{terl_tree_dir}/annotated_tree_with_cluster_piecharts", size_attribute="number_of_clusters")
+    render_circular_tree(tree_clades, f"{terl_tree_dir}/annotated_tree_with_clade_piecharts", size_attribute="number_of_clades")
+    render_circular_tree(tree_bacterial, f"{terl_tree_dir}/annotated_tree_with_bacterial_piecharts", size_attribute="number_of_bacterial")
+
+    # Generate scatterplots
     create_number_of_clades_vs_number_of_clusters_scatterplot(output_tsv_file, output_scatterplot_clades_vs_clusters)
-
     create_number_of_clades_vs_number_of_bacterial_scatterplot(output_tsv_file, output_scatterplot_clades_vs_bacterial)
