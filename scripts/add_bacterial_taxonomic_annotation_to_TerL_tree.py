@@ -371,6 +371,7 @@ def process_phylum_data(data: pd.DataFrame) -> pd.DataFrame:
 
     return data
 
+
 def create_scatterplot(data: pd.DataFrame, x_col: str, y_col: str, x_label: str, y_label: str, title: str, output_file: str):
     """
     Creates a scatter plot with points colored by the most abundant phylum.
@@ -387,12 +388,18 @@ def create_scatterplot(data: pd.DataFrame, x_col: str, y_col: str, x_label: str,
         alpha=0.7,
         edgecolor='k'
     )
-    plt.xlabel(x_label)
-    plt.ylabel(y_label)
-    plt.title(title)
+
+    # Set axis labels and title with larger font sizes
+    plt.xlabel(x_label, fontsize=22)
+    plt.ylabel(y_label, fontsize=22)
+    plt.title(title, fontsize=24)
     plt.grid(True)
 
-    # Add a legend
+    # Increase tick label font size
+    plt.xticks(fontsize=18)
+    plt.yticks(fontsize=18)
+
+    # Add a legend with larger font size
     handles = [
         plt.Line2D(
             [0], [0],
@@ -404,13 +411,14 @@ def create_scatterplot(data: pd.DataFrame, x_col: str, y_col: str, x_label: str,
         )
         for phylum, color in PHYLUM_COLORS.items()
     ]
-    plt.legend(handles=handles, title="Most Abundant Phylum")
+    plt.legend(handles=handles, title="Most Abundant Phylum", title_fontsize=16, fontsize=16)
 
-    # Save the plot
-    plt.savefig(output_file)
+    # Save the plot with high DPI for better quality
+    plt.savefig(output_file, dpi=300)
     plt.close()
 
     logger.info(f"Scatterplot saved as {output_file}")
+
 
 def create_number_of_clades_vs_number_of_bacterial_scatterplot(input_file: str, output_file: str):
     """
@@ -418,7 +426,7 @@ def create_number_of_clades_vs_number_of_bacterial_scatterplot(input_file: str, 
     """
     # Read the data
     data = pd.read_csv(input_file, sep="\t")
-    logger.info(f"Initial data preview:\n{data.head()}")
+    logger.debug(f"Initial data preview:\n{data.head()}")
 
     # Process phylum data
     data = process_phylum_data(data)
@@ -444,7 +452,7 @@ def create_number_of_clades_vs_number_of_clusters_scatterplot(input_file: str, o
     """
     # Read the data
     data = pd.read_csv(input_file, sep="\t")
-    logger.info(f"Initial data preview:\n{data.head()}")
+    logger.debug(f"Initial data preview:\n{data.head()}")
 
     # Process phylum data
     data = process_phylum_data(data)
