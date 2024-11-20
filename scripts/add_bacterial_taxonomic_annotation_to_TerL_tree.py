@@ -13,6 +13,22 @@ matplotlib.use('Agg')
 # Ensure Qt offscreen rendering
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
+PHYLUM_COLUMNS = [
+        'number_of_Bacteroidetes',
+        'number_of_Actinobacteria',
+        'number_of_Bacillota',
+        'number_of_Proteobacteria',
+        'number_of_Other_bacteria'
+    ]
+
+PHYLUM_COLORS = {
+    'Bacteroidetes': '#ff7f00',  # Orange
+    'Actinobacteria': '#ffff99',  # Pale Yellow
+    'Bacillota': '#a6cee3',  # Light Blue
+    'Proteobacteria': '#b15928',  # Brown
+    'Other_bacteria': '#b2df8a',  # Light Green
+    'None': '#000000'  # Black for no dominant phylum
+}
 
 # Global color schemes
 CRASSVIRALES_COLOR_SCHEME = {
@@ -325,144 +341,55 @@ def save_mrca_data(tree: Tree, output_file: str):
     logger.info(f"All internal node data saved to {output_file}")
 
 
-def create_number_of_clades_vs_number_of_clusters_scatterplot(input_file: str, output_file: str):
-    # Read the data
-    data = pd.read_csv(input_file, sep="\t")
+def get_most_abundant_phylum(row):
 
-    # # Log data types and preview
-    # logger.info("Data types:\n%s", data.dtypes)
-    # logger.info("Data preview:\n%s", data.head())
-    #
-    # # Columns to check for max category
-    # categories = [
-    #     'number_of_Bacteroidetes',
-    #     'number_of_Actinobacteria',
-    #     'number_of_Bacillota',
-    #     'number_of_Proteobacteria',
-    #     'number_of_Other_bacteria',
-    #     'number_of_viral'
-    # ]
-    #
-    # # Ensure all columns are present
-    # for category in categories:
-    #     if category not in data.columns:
-    #         raise ValueError(f"Missing required column: {category}")
-    #
-    # # Convert all category columns to numeric, replacing invalid data with 0
-    # for category in categories:
-    #     data[category] = pd.to_numeric(data[category], errors='coerce').fillna(0)
-    #
-    # # Function to determine color based on the largest category
-    # def get_color(row):
-    #     row_values = row[categories]
-    #     logger.debug("Row values: %s", row_values.to_dict())  # Log the row for debugging
-    #     max_value = row_values.max()
-    #     if max_value == 0:
-    #         return CATEGORY_COLORS['None']
-    #     max_category = row_values.idxmax().replace('number_of_', '')
-    #     return CATEGORY_COLORS.get(max_category, 'black')
+    # Extract phylum values
+    row_values = row[PHYLUM_COLUMNS].astype(float)
 
-    # # Debugging: Log assigned colors and categories
-    # data['max_category'] = data[categories].idxmax(axis=1).replace({'number_of_': ''}, regex=True)
-    # logger.info("Processed data with colors:\n%s",
-    #             data[['number_of_clusters', 'number_of_clades', 'max_category', 'color']].head())
-    #
-    # # Apply the color function
-    # data['color'] = data.apply(get_color, axis=1)
+    # Check if all values are zero
+    if row_values.sum() == 0:
+        return 'None'
 
-    # Scatter plot
-    plt.figure(figsize=(10, 8))
-    # plt.scatter(data['number_of_clusters'], data['number_of_clades'], c=data['color'], edgecolor='k', alpha=0.7)
-    plt.scatter(data['number_of_clades'], data['number_of_clusters'])
-    plt.xlabel('Number of Clades')
-    plt.ylabel('Number of Clusters')
-    plt.title('Number of Clades vs. Number of Clusters')
-    plt.grid(True)
-
-    # Save the plot
-    plt.savefig(output_file)
-    plt.close()
-
-    logger.info(f"Scatterplot saved as {output_file}")
+    # Find the column with the maximum value and extract phylum name
+    most_abundant_column = row_values.idxmax()
+    return most_abundant_column.replace('number_of_', '')
 
 
-def create_number_of_clades_vs_number_of_bacterial_scatterplot(input_file: str, output_file: str):
-    # Function to find the most abundant phylum
-    def get_most_abundant_phylum(row):
-        # Extract phylum values
-        row_values = row[phylum_columns].astype(float)
-
-        # Check if all values are zero
-        if row_values.sum() == 0:
-            return 'None'
-
-        # Find the column with the maximum value and extract phylum name
-        most_abundant_column = row_values.idxmax()
-        return most_abundant_column.replace('number_of_', '')
-
-    # Read the data
-
-    data = pd.read_csv(input_file, sep="\t")
-
-    # Columns to consider for the most abundant phylum
-    phylum_columns = [
-        'number_of_Bacteroidetes',
-        'number_of_Actinobacteria',
-        'number_of_Bacillota',
-        'number_of_Proteobacteria',
-        'number_of_Other_bacteria'
-    ]
-
-    # Debugging: Initial data
-    logger.info(f"Initial data preview:\n{data.head()}")
-
-    # Ensure all phylum columns exist
-    missing_columns = [col for col in phylum_columns if col not in data.columns]
-    if missing_columns:
-        raise ValueError(f"Missing required columns: {missing_columns}")
-
+def process_phylum_data(data: pd.DataFrame) -> pd.DataFrame:
+    """
+    Processes the phylum-related columns: ensures numeric conversion,
+    fills NaN with 0, and determines the most abundant phylum.
+    """
     # Convert all phylum columns to numeric and replace NaN with 0
-    data[phylum_columns] = data[phylum_columns].apply(pd.to_numeric, errors='coerce').fillna(0)
-
-    # Debugging: Confirm numeric conversion
-    logger.info(f"Data types after conversion:\n{data[phylum_columns].dtypes}")
-    logger.info(f"Preview of phylum data:\n{data[phylum_columns].head()}")
-
-    # Define color mapping for phyla
-    phylum_colors = {
-        'Bacteroidetes': '#ff7f00',  # Orange
-        'Actinobacteria': '#ffff99',  # Pale Yellow
-        'Bacillota': '#a6cee3',  # Light Blue
-        'Proteobacteria': '#b15928',  # Brown
-        'Other_bacteria': '#b2df8a',  # Light Green
-        'None': '#000000'  # Black for no dominant phylum
-    }
+    data[PHYLUM_COLUMNS] = data[PHYLUM_COLUMNS].apply(pd.to_numeric, errors='coerce').fillna(0)
 
     # Determine the most abundant phylum for each row
-    data['most_abundant_phylum'] = data.apply(get_most_abundant_phylum, axis=1)
+    data['most_abundant_phylum'] = data[PHYLUM_COLUMNS].idxmax(axis=1).str.replace('number_of_', '')
+    data['most_abundant_phylum'] = data['most_abundant_phylum'].where(
+        data[PHYLUM_COLUMNS].sum(axis=1) > 0, 'None'
+    )
 
-    # Debugging: Verify results
-    logger.info(f"Most abundant phylum value counts:\n{data['most_abundant_phylum'].value_counts()}")
+    return data
 
-    # Apply log10 transformation to the relevant columns
-    data['log_number_of_clades'] = np.log10(data['number_of_clades'].replace(0, np.nan)).fillna(0)
-    data['log_number_of_bacterial'] = np.log10(data['number_of_bacterial'].replace(0, np.nan)).fillna(0)
-
+def create_scatterplot(data: pd.DataFrame, x_col: str, y_col: str, x_label: str, y_label: str, title: str, output_file: str):
+    """
+    Creates a scatter plot with points colored by the most abundant phylum.
+    """
     # Map colors based on the most abundant phylum
-    data['color'] = data['most_abundant_phylum'].map(phylum_colors)
+    data['color'] = data['most_abundant_phylum'].map(PHYLUM_COLORS)
 
     # Scatter plot
     plt.figure(figsize=(10, 8))
     plt.scatter(
-        data['log_number_of_clades'],
-        data['log_number_of_bacterial'],
+        data[x_col],
+        data[y_col],
         c=data['color'],
         alpha=0.7,
         edgecolor='k'
     )
-    plt.xlabel('Log10(Number of Clades)')
-    plt.ylabel('Log10(Number of Bacterial)')
-    plt.title('Log10(Number of Clades) vs. Log10(Number of Bacterial)')
+    plt.xlabel(x_label)
+    plt.ylabel(y_label)
+    plt.title(title)
     plt.grid(True)
 
     # Add a legend
@@ -475,7 +402,7 @@ def create_number_of_clades_vs_number_of_bacterial_scatterplot(input_file: str, 
             markersize=10,
             label=phylum
         )
-        for phylum, color in phylum_colors.items()
+        for phylum, color in PHYLUM_COLORS.items()
     ]
     plt.legend(handles=handles, title="Most Abundant Phylum")
 
@@ -484,6 +411,58 @@ def create_number_of_clades_vs_number_of_bacterial_scatterplot(input_file: str, 
     plt.close()
 
     logger.info(f"Scatterplot saved as {output_file}")
+
+def create_number_of_clades_vs_number_of_bacterial_scatterplot(input_file: str, output_file: str):
+    """
+    Creates a scatter plot of log10(Number of Clades) vs. log10(Number of Bacterial).
+    """
+    # Read the data
+    data = pd.read_csv(input_file, sep="\t")
+    logger.info(f"Initial data preview:\n{data.head()}")
+
+    # Process phylum data
+    data = process_phylum_data(data)
+
+    # Apply log10 transformation
+    data['log_number_of_clades'] = np.log10(data['number_of_clades'].replace(0, np.nan)).fillna(0)
+    data['log_number_of_bacterial'] = np.log10(data['number_of_bacterial'].replace(0, np.nan)).fillna(0)
+
+    # Create scatter plot
+    create_scatterplot(
+        data,
+        x_col='log_number_of_clades',
+        y_col='log_number_of_bacterial',
+        x_label='Log10(Number of Clades)',
+        y_label='Log10(Number of Bacterial)',
+        title='Log10(Number of Clades) vs. Log10(Number of Bacterial)',
+        output_file=output_file
+    )
+
+def create_number_of_clades_vs_number_of_clusters_scatterplot(input_file: str, output_file: str):
+    """
+    Creates a scatter plot of Number of Clades vs. Number of Clusters.
+    """
+    # Read the data
+    data = pd.read_csv(input_file, sep="\t")
+    logger.info(f"Initial data preview:\n{data.head()}")
+
+    # Process phylum data
+    data = process_phylum_data(data)
+
+    # Apply log10 transformation
+    data['log_number_of_clades'] = np.log10(data['number_of_clades'].replace(0, np.nan)).fillna(0)
+    data['log_number_of_clusters'] = np.log10(data['number_of_clusters'].replace(0, np.nan)).fillna(0)
+
+    # Create scatter plot
+    create_scatterplot(
+        data,
+        x_col='log_number_of_clades',
+        y_col='log_number_of_clusters',
+        x_label='Log10(Number of Clades)',
+        y_label='Log10(Number of Clusters)',
+        title='Log10(Number of Clades) vs. Log10(Number of Clusters)',
+        output_file=output_file
+    )
 
 
 if __name__ == "__main__":
