@@ -494,6 +494,31 @@ def create_number_of_clades_vs_number_of_clusters_scatterplot(input_file: str, o
     )
 
 
+def create_number_of_crassvirales_vs_number_of_bacterial_scatterplot(cluster_data: pd.DataFrame, output_file: str):
+    """
+    Creates a scatter plot of log10(Number of Clades) vs. log10(Number of Bacterial).
+    """
+    logger.debug(f"Initial data preview:\n{cluster_data.head()}")
+
+    # Process phylum data
+    data = process_phylum_data(cluster_data)
+
+    # Apply log10 transformation
+    data['log_number_of_crassvirales'] = np.log10(data['number_of_crassvirales'].replace(0, np.nan)).fillna(0)
+    data['log_number_of_bacterial'] = np.log10(data['number_of_bacterial'].replace(0, np.nan)).fillna(0)
+
+    # Create scatter plot
+    create_scatterplot(
+        data,
+        x_col='log_number_of_crassvirales',
+        y_col='log_number_of_bacterial',
+        x_label='Log10(number_of_crassvirales)',
+        y_label='Log10(Number of Bacterial)',
+        title='Log10(number_of_crassvirales) vs. Log10(Number of Bacterial)',
+        output_file=output_file
+    )
+
+
 if __name__ == "__main__":
     # Configure logging
     logging.basicConfig(level=logging.INFO)
@@ -507,8 +532,13 @@ if __name__ == "__main__":
                         "2_trees_leaves/phylome_summary/tree_analysis_test/cluster_analysis_all_draco/rooted/" \
                         "concatenated_clusters_data.tsv"
     output_tsv_file = f"{terl_tree_dir}/annotated_tree_mrca_node_data.tsv"
-    output_scatterplot_clades_vs_clusters = f"{terl_tree_dir}/number_of_clades_vs_number_of_clusters_scatterplot.png"
-    output_scatterplot_clades_vs_bacterial = f"{terl_tree_dir}/number_of_clades_vs_number_of_bacterial_scatterplot.png"
+
+    output_figures_dir = f"{terl_tree_dir}/figures"
+
+    output_scatterplot_clades_vs_clusters = f"{output_figures_dir}/number_of_clades_vs_number_of_clusters_scatterplot_mrca.png"
+    output_scatterplot_clades_vs_bacterial = f"{output_figures_dir}/number_of_clades_vs_number_of_bacterial_scatterplot_mrca.png"
+
+    output_scatterplot_crassvirales_vs_bacterial = f"{output_figures_dir}/number_of_clades_vs_number_of_bacterial_scatterplot_clades.png"
 
     # Load data and parse tree
     annotations = load_annotations(annotation_file)
@@ -539,10 +569,13 @@ if __name__ == "__main__":
     tree_bacterial = tree.copy()
 
     # Render and save each tree
-    render_circular_tree(tree_clusters, f"{terl_tree_dir}/annotated_tree_with_cluster_piecharts", size_attribute="number_of_clusters")
-    render_circular_tree(tree_clades, f"{terl_tree_dir}/annotated_tree_with_clade_piecharts", size_attribute="number_of_clades")
-    render_circular_tree(tree_bacterial, f"{terl_tree_dir}/annotated_tree_with_bacterial_piecharts", size_attribute="number_of_bacterial")
+    render_circular_tree(tree_clusters, f"{output_figures_dir}/annotated_tree_with_cluster_piecharts", size_attribute="number_of_clusters")
+    render_circular_tree(tree_clades, f"{output_figures_dir}/annotated_tree_with_clade_piecharts", size_attribute="number_of_clades")
+    render_circular_tree(tree_bacterial, f"{output_figures_dir}/annotated_tree_with_bacterial_piecharts", size_attribute="number_of_bacterial")
 
     # Generate scatterplots
     create_number_of_clades_vs_number_of_clusters_scatterplot(output_tsv_file, output_scatterplot_clades_vs_clusters)
     create_number_of_clades_vs_number_of_bacterial_scatterplot(output_tsv_file, output_scatterplot_clades_vs_bacterial)
+
+    create_number_of_crassvirales_vs_number_of_bacterial_scatterplot(filtered_data,
+                                                                     output_scatterplot_crassvirales_vs_bacterial)
