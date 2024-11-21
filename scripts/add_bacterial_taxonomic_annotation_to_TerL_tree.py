@@ -6,6 +6,7 @@ from typing import Dict, List
 from ete3 import Tree, TreeStyle, TreeNode, NodeStyle, TextFace, faces
 import matplotlib
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 import numpy as np
 import pandas as pd
 
@@ -398,6 +399,17 @@ def create_scatterplot(data: pd.DataFrame, x_col: str, y_col: str, x_label: str,
         edgecolor='k'
     )
 
+    # Format axis labels
+    def log10_to_absolute(value, tick_number):
+        return f"{10**value:.0f}"
+
+    plt.gca().xaxis.set_major_formatter(ticker.FuncFormatter(log10_to_absolute))
+    plt.gca().yaxis.set_major_formatter(ticker.FuncFormatter(log10_to_absolute))
+
+    plt.xlabel(x_label.replace("Log10(", "").replace(")", " (Absolute)"))
+    plt.ylabel(y_label.replace("Log10(", "").replace(")", " (Absolute)"))
+    plt.title(title.replace("Log10(", "").replace(")", " (Absolute)"))
+
     # Set axis labels and title with larger font sizes
     plt.xlabel(x_label, fontsize=22)
     plt.ylabel(y_label, fontsize=22)
@@ -408,7 +420,7 @@ def create_scatterplot(data: pd.DataFrame, x_col: str, y_col: str, x_label: str,
     plt.xticks(fontsize=18)
     plt.yticks(fontsize=18)
 
-    # Add a legend with larger font size
+    # Add a legend
     handles = [
         plt.Line2D(
             [0], [0],
@@ -422,8 +434,8 @@ def create_scatterplot(data: pd.DataFrame, x_col: str, y_col: str, x_label: str,
     ]
     plt.legend(handles=handles, title="Most Abundant Phylum", title_fontsize=16, fontsize=16)
 
-    # Save the plot with high DPI for better quality
-    plt.savefig(output_file, dpi=300)
+    # Save the plot
+    plt.savefig(output_file)
     plt.close()
 
     logger.info(f"Scatterplot saved as {output_file}")
