@@ -367,14 +367,24 @@ def get_most_abundant_phylum(row):
 
 def process_phylum_data(data: pd.DataFrame) -> pd.DataFrame:
     """
-    Processes the phylum-related columns: ensures numeric conversion,
-    fills NaN with 0, and determines the most abundant phylum.
+    Processes the phylum data: converts phylum columns to numeric and assigns most abundant phylum.
     """
-    # Convert all phylum columns to numeric and replace NaN with 0
-    data[PHYLUM_COLUMNS] = data[PHYLUM_COLUMNS].apply(pd.to_numeric, errors='coerce').fillna(0)
+    # Ensure all phylum columns exist
+    missing_columns = [col for col in PHYLUM_COLUMNS if col not in data.columns]
+    if missing_columns:
+        raise ValueError(f"Missing required columns: {missing_columns}")
 
-    # Determine the most abundant phylum for each row
-    data['most_abundant_phylum'] = data[PHYLUM_COLUMNS].idxmax(axis=1).str.replace('number_of_', '')
+    # Convert phylum columns to numeric and replace NaN with 0
+    data = data.copy()  # Ensure we're working on a copy
+    for col in PHYLUM_COLUMNS:
+        data[col] = pd.to_numeric(data[col], errors='coerce').fillna(0)
+
+    # Determine most abundant phylum
+    data['most_abundant_phylum'] = (
+        data[PHYLUM_COLUMNS]
+        .idxmax(axis=1)
+        .str.replace('number_of_', '', regex=False)
+    )
     data['most_abundant_phylum'] = data['most_abundant_phylum'].where(
         data[PHYLUM_COLUMNS].sum(axis=1) > 0, 'None'
     )
@@ -387,7 +397,7 @@ def create_scatterplot(data: pd.DataFrame, x_col: str, y_col: str, x_label: str,
     Creates a scatter plot with points colored by the most abundant phylum.
     """
     # Map colors based on the most abundant phylum
-    data['color'] = data['most_abundant_phylum'].map(PHYLUM_COLORS)
+    data.loc[:, 'color'] = data['most_abundant_phylum'].map(PHYLUM_COLORS)
 
     # Scatter plot
     plt.figure(figsize=(10, 8))
@@ -452,9 +462,13 @@ def create_number_of_clades_vs_number_of_bacterial_scatterplot(input_file: str, 
     # Process phylum data
     data = process_phylum_data(data)
 
-    # Apply log10 transformation
-    data['log_number_of_clades'] = np.log10(data['number_of_clades'].replace(0, np.nan)).fillna(0)
-    data['log_number_of_bacterial'] = np.log10(data['number_of_bacterial'].replace(0, np.nan)).fillna(0)
+    # Apply log10 transformation (ensure all assignments use .loc explicitly)
+    data = data.copy()  # Avoid modifying slices
+    data.loc[:, 'log_number_of_clades'] = np.log10(data['number_of_clades'].replace(0, np.nan)).fillna(0)
+    data.loc[:, 'log_number_of_bacterial'] = np.log10(data['number_of_bacterial'].replace(0, np.nan)).fillna(0)
+
+    # Map colors based on the most abundant phylum
+    data.loc[:, 'color'] = data['most_abundant_phylum'].map(PHYLUM_COLORS)
 
     # Create scatter plot
     create_scatterplot(
@@ -494,29 +508,61 @@ def create_number_of_clades_vs_number_of_clusters_scatterplot(input_file: str, o
     )
 
 
-def create_number_of_crassvirales_vs_number_of_bacterial_scatterplot(cluster_data: pd.DataFrame, output_file: str):
+def create_number_of_crassvirales_vs_number_of_bacterial_scatterplot(
+    cluster_data: pd.DataFrame, threshold: int, output_dir: str):
     """
-    Creates a scatter plot of log10(Number of Clades) vs. log10(Number of Bacterial).
+    Creates scatter plots of number_of_crassvirales vs. number_of_bacterial for both absolute and log10-transformed values.
     """
-    logger.debug(f"Initial data preview:\n{cluster_data.head()}")
+    logger.info(f"Processing threshold: {threshold}")
+
+    # Filter data based on the threshold
+    filtered_data = cluster_data[cluster_data['threshold'] == threshold]
+    if filtered_data.empty:
+        logger.warning(f"No data for threshold {threshold}. Skipping...")
+        return
 
     # Process phylum data
-    data = process_phylum_data(cluster_data)
+    filtered_data = process_phylum_data(filtered_data)
 
-    # Apply log10 transformation
-    data['log_number_of_crassvirales'] = np.log10(data['number_of_crassvirales'].replace(0, np.nan)).fillna(0)
-    data['log_number_of_bacterial'] = np.log10(data['number_of_bacterial'].replace(0, np.nan)).fillna(0)
+    # Apply log10 transformations
+    filtered_data['log_number_of_crassvirales'] = np.log10(
+        filtered_data['number_of_crassvirales'].replace(0, np.nan)).fillna(0)
+    filtered_data['log_number_of_bacterial'] = np.log10(
+        filtered_data['number_of_bacterial'].replace(0, np.nan)).fillna(0)
 
-    # Create scatter plot
+    # Generate scatterplot for absolute counts
+    absolute_output_file = f"{output_dir}/scatterplot_crassvirales_vs_bacterial_threshold_{threshold}_absolute.png"
     create_scatterplot(
-        data,
+        filtered_data,
+        x_col='number_of_crassvirales',
+        y_col='number_of_bacterial',
+        x_label='Number of Crassvirales',
+        y_label='Number of Bacterial',
+        title=f'Number of Crassvirales vs. Number of Bacterial (Threshold {threshold})',
+        output_file=absolute_output_file
+    )
+
+    # Generate scatterplot for log10-transformed values
+    log_output_file = f"{output_dir}/scatterplot_crassvirales_vs_bacterial_threshold_{threshold}_log10.png"
+    create_scatterplot(
+        filtered_data,
         x_col='log_number_of_crassvirales',
         y_col='log_number_of_bacterial',
-        x_label='Log10(number_of_crassvirales)',
+        x_label='Log10(Number of Crassvirales)',
         y_label='Log10(Number of Bacterial)',
-        title='Log10(number_of_crassvirales) vs. Log10(Number of Bacterial)',
-        output_file=output_file
+        title=f'Log10(Number of Crassvirales) vs. Log10(Number of Bacterial) (Threshold {threshold})',
+        output_file=log_output_file
     )
+
+
+def create_crassvirales_vs_bacterial_scatterplots_for_thresholds(cluster_data: pd.DataFrame, output_dir: str):
+    """
+    Creates scatterplots for number_of_crassvirales vs. number_of_bacterial across different thresholds.
+    """
+    for threshold in range(0, 91, 10):
+        create_number_of_crassvirales_vs_number_of_bacterial_scatterplot(
+            cluster_data, threshold, output_dir
+        )
 
 
 if __name__ == "__main__":
@@ -538,7 +584,7 @@ if __name__ == "__main__":
     output_scatterplot_clades_vs_clusters = f"{output_figures_dir}/number_of_clades_vs_number_of_clusters_scatterplot_mrca.png"
     output_scatterplot_clades_vs_bacterial = f"{output_figures_dir}/number_of_clades_vs_number_of_bacterial_scatterplot_mrca.png"
 
-    output_scatterplot_crassvirales_vs_bacterial = f"{output_figures_dir}/number_of_clades_vs_number_of_bacterial_scatterplot_clades.png"
+    output_scatterplot_crassvirales_vs_bacterial = f"{output_figures_dir}/number_of_crassvirales_vs_number_of_bacterial_scatterplot.png"
 
     # Load data and parse tree
     annotations = load_annotations(annotation_file)
@@ -577,5 +623,7 @@ if __name__ == "__main__":
     create_number_of_clades_vs_number_of_clusters_scatterplot(output_tsv_file, output_scatterplot_clades_vs_clusters)
     create_number_of_clades_vs_number_of_bacterial_scatterplot(output_tsv_file, output_scatterplot_clades_vs_bacterial)
 
-    create_number_of_crassvirales_vs_number_of_bacterial_scatterplot(filtered_data,
-                                                                     output_scatterplot_crassvirales_vs_bacterial)
+    # create_number_of_crassvirales_vs_number_of_bacterial_scatterplot(filtered_data,
+    #                                                                  output_scatterplot_crassvirales_vs_bacterial)
+
+    create_crassvirales_vs_bacterial_scatterplots_for_thresholds(cluster_data, output_figures_dir)
