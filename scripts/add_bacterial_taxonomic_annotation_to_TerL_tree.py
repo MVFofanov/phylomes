@@ -392,7 +392,8 @@ def process_phylum_data(data: pd.DataFrame) -> pd.DataFrame:
     return data
 
 
-def create_scatterplot(data: pd.DataFrame, x_col: str, y_col: str, x_label: str, y_label: str, title: str, output_file: str):
+def create_scatterplot(data: pd.DataFrame, x_col: str, y_col: str, x_label: str, y_label: str, title: str, output_file: str,
+                       is_column_transformed: str | None = None):
     """
     Creates a scatter plot with points colored by the most abundant phylum.
     """
@@ -409,21 +410,22 @@ def create_scatterplot(data: pd.DataFrame, x_col: str, y_col: str, x_label: str,
         edgecolor='k'
     )
 
-    # Format axis labels
-    def log10_to_absolute(value, tick_number):
-        return f"{10**value:.0f}"
+    if is_column_transformed is not None:
+        # Format axis labels
+        def log10_to_absolute(value, tick_number):
+            return f"{10**value:.0f}"
 
-    plt.gca().xaxis.set_major_formatter(ticker.FuncFormatter(log10_to_absolute))
-    plt.gca().yaxis.set_major_formatter(ticker.FuncFormatter(log10_to_absolute))
+        plt.gca().xaxis.set_major_formatter(ticker.FuncFormatter(log10_to_absolute))
+        plt.gca().yaxis.set_major_formatter(ticker.FuncFormatter(log10_to_absolute))
 
-    plt.xlabel(x_label.replace("Log10(", "").replace(")", " (Absolute)"))
-    plt.ylabel(y_label.replace("Log10(", "").replace(")", " (Absolute)"))
-    plt.title(title.replace("Log10(", "").replace(")", " (Absolute)"))
+    # plt.xlabel(x_label.replace("Log10(", "").replace(")", " (Absolute)"))
+    # plt.ylabel(y_label.replace("Log10(", "").replace(")", " (Absolute)"))
+    # plt.title(title.replace("Log10(", "").replace(")", " (Absolute)"))
 
     # Set axis labels and title with larger font sizes
     plt.xlabel(x_label, fontsize=22)
     plt.ylabel(y_label, fontsize=22)
-    plt.title(title, fontsize=24)
+    plt.title(title, fontsize=20)
     plt.grid(True)
 
     # Increase tick label font size
@@ -539,7 +541,8 @@ def create_number_of_crassvirales_vs_number_of_bacterial_scatterplot(
         x_label='Number of Crassvirales',
         y_label='Number of Bacterial',
         title=f'Number of Crassvirales vs. Number of Bacterial (Threshold {threshold})',
-        output_file=absolute_output_file
+        output_file=absolute_output_file,
+        is_column_transformed=None
     )
 
     # Generate scatterplot for log10-transformed values
@@ -551,7 +554,8 @@ def create_number_of_crassvirales_vs_number_of_bacterial_scatterplot(
         x_label='Log10(Number of Crassvirales)',
         y_label='Log10(Number of Bacterial)',
         title=f'Log10(Number of Crassvirales) vs. Log10(Number of Bacterial) (Threshold {threshold})',
-        output_file=log_output_file
+        output_file=log_output_file,
+        is_column_transformed="log10"
     )
 
 
