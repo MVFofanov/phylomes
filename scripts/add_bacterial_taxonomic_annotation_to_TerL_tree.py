@@ -531,6 +531,8 @@ def create_number_of_crassvirales_vs_number_of_bacterial_scatterplot(
         filtered_data['number_of_crassvirales'].replace(0, np.nan)).fillna(0)
     filtered_data['log_number_of_bacterial'] = np.log10(
         filtered_data['number_of_bacterial'].replace(0, np.nan)).fillna(0)
+    filtered_data['log_number_of_viral'] = np.log10(
+        filtered_data['number_of_viral'].replace(0, np.nan)).fillna(0)
 
     # Generate scatterplot for absolute counts
     absolute_output_file = f"{output_dir}/scatterplot_crassvirales_vs_bacterial_threshold_{threshold}_absolute.png"
@@ -554,6 +556,32 @@ def create_number_of_crassvirales_vs_number_of_bacterial_scatterplot(
         x_label='Log10(Number of Crassvirales)',
         y_label='Log10(Number of Bacterial)',
         title=f'Log10(Number of Crassvirales) vs. Log10(Number of Bacterial) (Threshold {threshold})',
+        output_file=log_output_file,
+        is_column_transformed="log10"
+    )
+
+    # Generate scatterplot for absolute counts
+    absolute_output_file = f"{output_dir}/scatterplot_crassvirales_vs_viral_threshold_{threshold}_absolute.png"
+    create_scatterplot(
+        filtered_data,
+        x_col='number_of_crassvirales',
+        y_col='number_of_viral',
+        x_label='Number of Crassvirales',
+        y_label='Number of Viral',
+        title=f'Number of Crassvirales vs. Number of Viral (Threshold {threshold})',
+        output_file=absolute_output_file,
+        is_column_transformed=None
+    )
+
+    # Generate scatterplot for log10-transformed values
+    log_output_file = f"{output_dir}/scatterplot_crassvirales_vs_viral_threshold_{threshold}_log10.png"
+    create_scatterplot(
+        filtered_data,
+        x_col='log_number_of_crassvirales',
+        y_col='log_number_of_viral',
+        x_label='Log10(Number of Crassvirales)',
+        y_label='Log10(Number of Viral)',
+        title=f'Log10(Number of Crassvirales) vs. Log10(Number of Viral) (Threshold {threshold})',
         output_file=log_output_file,
         is_column_transformed="log10"
     )
@@ -584,6 +612,8 @@ if __name__ == "__main__":
     output_tsv_file = f"{terl_tree_dir}/annotated_tree_mrca_node_data.tsv"
 
     output_figures_dir = f"{terl_tree_dir}/figures"
+
+    output_figures_crassvirales_vs_all_dir = f"{terl_tree_dir}/figures/crassvirales_vs_bacterial_and_viral"
 
     output_scatterplot_clades_vs_clusters = f"{output_figures_dir}/number_of_clades_vs_number_of_clusters_scatterplot_mrca.png"
     output_scatterplot_clades_vs_bacterial = f"{output_figures_dir}/number_of_clades_vs_number_of_bacterial_scatterplot_mrca.png"
@@ -627,7 +657,5 @@ if __name__ == "__main__":
     create_number_of_clades_vs_number_of_clusters_scatterplot(output_tsv_file, output_scatterplot_clades_vs_clusters)
     create_number_of_clades_vs_number_of_bacterial_scatterplot(output_tsv_file, output_scatterplot_clades_vs_bacterial)
 
-    # create_number_of_crassvirales_vs_number_of_bacterial_scatterplot(filtered_data,
-    #                                                                  output_scatterplot_crassvirales_vs_bacterial)
-
-    create_crassvirales_vs_bacterial_scatterplots_for_thresholds(cluster_data, output_figures_dir)
+    create_crassvirales_vs_bacterial_scatterplots_for_thresholds(cluster_data,
+                                                                 output_figures_crassvirales_vs_all_dir)
