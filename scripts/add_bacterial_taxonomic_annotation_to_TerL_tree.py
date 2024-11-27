@@ -66,6 +66,26 @@ CATEGORY_COLORS = {
     'None': 'black'  # Black for zero counts
 }
 
+FUNCTION_COLORS = {
+    # "hypothetical protein": "#ff9999",
+    # "moron": "#66b3ff",
+    # "auxiliary metabolic gene": "#99ff99",
+    # "host takeover": "#ffcc99",
+    # "unknown": "#d3d3d3" , # Default for unknown functions
+
+    "unknown function": "#AAAAAA",
+    "DNA, RNA and nucleotide metabolism": "#f000ff",
+    "other": "#4deeea",
+    "head and packaging": "#ff008d",
+    "tail": "#74ee15",
+    "lysis": "#001eff",
+    "moron, auxiliary metabolic gene and host takeover": "#8900ff",
+    "transcription regulation": "#ffe700",
+    "integration and excision": "#E0B0FF",
+    "connector": "#5A5A5A"
+
+}
+
 
 def load_annotations(annotation_file: str) -> pd.DataFrame:
     return pd.read_csv(annotation_file, sep="\t")
@@ -392,13 +412,25 @@ def process_phylum_data(data: pd.DataFrame) -> pd.DataFrame:
     return data
 
 
-def create_scatterplot(data: pd.DataFrame, x_col: str, y_col: str, x_label: str, y_label: str, title: str, output_file: str,
-                       is_column_transformed: str | None = None):
+def create_scatterplot(data: pd.DataFrame, x_col: str, y_col: str, x_label: str, y_label: str, title: str,
+                       output_file: str, is_column_transformed: str | None = None,
+                       color_column_name: str = "most_abundant_phylum"):
     """
     Creates a scatter plot with points colored by the most abundant phylum.
     """
+    if color_column_name == 'most_abundant_phylum':
+        colors = PHYLUM_COLORS
+    elif color_column_name == 'most_abundant_function':
+        colors = FUNCTION_COLORS
+    else:
+        colors = PHYLUM_COLUMNS | BACTERIAL_PHYLUM_COLORS | CRASSVIRALES_COLOR_SCHEME | CATEGORY_COLORS | FUNCTION_COLORS
     # Map colors based on the most abundant phylum
-    data.loc[:, 'color'] = data['most_abundant_phylum'].map(PHYLUM_COLORS)
+    data.loc[:, 'color'] = data[color_column_name].map(colors)
+
+    # Replace NaN values in the color column with a default color
+    if data['color'].isna().any():
+        logger.warning("Some 'color' values are NaN. Assigning default gray color.")
+        data['color'] = data['color'].fillna("#AAAAAA")  # Default gray color for NaN
 
     # Scatter plot
     plt.figure(figsize=(10, 8))
@@ -406,7 +438,7 @@ def create_scatterplot(data: pd.DataFrame, x_col: str, y_col: str, x_label: str,
         data[x_col],
         data[y_col],
         c=data['color'],
-        alpha=0.7,
+#        alpha=0.7,
         edgecolor='k'
     )
 
@@ -440,11 +472,11 @@ def create_scatterplot(data: pd.DataFrame, x_col: str, y_col: str, x_label: str,
             color='w',
             markerfacecolor=color,
             markersize=10,
-            label=phylum
+            label=color_column
         )
-        for phylum, color in PHYLUM_COLORS.items()
+        for color_column, color in colors.items()
     ]
-    plt.legend(handles=handles, title="Most Abundant Phylum", title_fontsize=16, fontsize=16)
+    plt.legend(handles=handles, title=color_column_name, title_fontsize=16, fontsize=16)
 
     # Save the plot
     plt.savefig(output_file)
@@ -480,7 +512,8 @@ def create_number_of_clades_vs_number_of_bacterial_scatterplot(input_file: str, 
         x_label='Log10(Number of Clades)',
         y_label='Log10(Number of Bacterial)',
         title='Log10(Number of Clades) vs. Log10(Number of Bacterial)',
-        output_file=output_file
+        output_file=output_file,
+        color_column_name="most_abundant_phylum"
     )
 
 def create_number_of_clades_vs_number_of_clusters_scatterplot(input_file: str, output_file: str):
@@ -506,7 +539,8 @@ def create_number_of_clades_vs_number_of_clusters_scatterplot(input_file: str, o
         x_label='Log10(Number of Clades)',
         y_label='Log10(Number of Clusters)',
         title='Log10(Number of Clades) vs. Log10(Number of Clusters)',
-        output_file=output_file
+        output_file=output_file,
+        color_column_name="most_abundant_phylum"
     )
 
 
@@ -544,7 +578,8 @@ def create_number_of_crassvirales_vs_number_of_bacterial_scatterplot(
         y_label='Number of Bacterial',
         title=f'Number of Crassvirales vs. Number of Bacterial (Threshold {threshold})',
         output_file=absolute_output_file,
-        is_column_transformed=None
+        is_column_transformed=None,
+        color_column_name="most_abundant_phylum"
     )
 
     # Generate scatterplot for log10-transformed values
@@ -557,7 +592,8 @@ def create_number_of_crassvirales_vs_number_of_bacterial_scatterplot(
         y_label='Log10(Number of Bacterial)',
         title=f'Log10(Number of Crassvirales) vs. Log10(Number of Bacterial) (Threshold {threshold})',
         output_file=log_output_file,
-        is_column_transformed="log10"
+        is_column_transformed="log10",
+        color_column_name="most_abundant_phylum"
     )
 
     # Generate scatterplot for absolute counts
@@ -570,7 +606,8 @@ def create_number_of_crassvirales_vs_number_of_bacterial_scatterplot(
         y_label='Number of Viral',
         title=f'Number of Crassvirales vs. Number of Viral (Threshold {threshold})',
         output_file=absolute_output_file,
-        is_column_transformed=None
+        is_column_transformed=None,
+        color_column_name="most_abundant_phylum"
     )
 
     # Generate scatterplot for log10-transformed values
@@ -583,7 +620,8 @@ def create_number_of_crassvirales_vs_number_of_bacterial_scatterplot(
         y_label='Log10(Number of Viral)',
         title=f'Log10(Number of Crassvirales) vs. Log10(Number of Viral) (Threshold {threshold})',
         output_file=log_output_file,
-        is_column_transformed="log10"
+        is_column_transformed="log10",
+        color_column_name="most_abundant_phylum"
     )
 
 
@@ -597,14 +635,176 @@ def create_crassvirales_vs_bacterial_scatterplots_for_thresholds(cluster_data: p
         )
 
 
+def load_merged_table(merged_file: str) -> pd.DataFrame:
+    """
+    Load the merged table with functional annotations.
+
+    Args:
+        merged_file (str): Path to the merged table file.
+
+    Returns:
+        pd.DataFrame: DataFrame containing functional annotations.
+    """
+    return pd.read_csv(merged_file, sep="\t")
+
+
+def map_functions_to_cluster_data(cluster_data: pd.DataFrame, merged_table: pd.DataFrame) -> pd.DataFrame:
+    """
+    Map functional categories to bacterial proteins in cluster_data.
+
+    Args:
+        cluster_data (pd.DataFrame): The cluster data DataFrame.
+        merged_table (pd.DataFrame): The merged table containing functional annotations.
+
+    Returns:
+        pd.DataFrame: Updated cluster_data with functional categories.
+    """
+    # Create a mapping from Protein_ID to 'category'
+    protein_to_function = merged_table.set_index('Protein_ID')['category'].to_dict()
+
+    # Define functions to calculate most abundant function and unique functions
+    def extract_functional_categories(protein_ids: str) -> pd.Series:
+        """
+        Given a comma-separated string of protein IDs, returns the most abundant functional
+        category and a unique list of categories.
+
+        Args:
+            protein_ids (str): Comma-separated string of protein IDs.
+
+        Returns:
+            pd.Series: Series with 'most_abundant_function' and 'unique_functions'.
+        """
+        if pd.isna(protein_ids) or not isinstance(protein_ids, str):
+            # Handle missing or invalid input
+            return pd.Series(['unknown', 'unknown'], index=['most_abundant_function', 'unique_functions'])
+
+        # Extract functional categories for the proteins
+        protein_list = protein_ids.split(", ")
+        # logger.debug(f"Processing bacterial_proteins: {protein_ids}")
+        logger.debug(f"Processing bacterial_proteins: {protein_list}")
+        functional_categories = [protein_to_function.get(protein, 'unknown') for protein in protein_list]
+        logger.debug(f"Processing bacterial_proteins functions: {functional_categories=}")
+
+        if not functional_categories:
+            # Handle cases with no valid protein IDs
+            return pd.Series(['unknown', 'unknown'], index=['most_abundant_function', 'unique_functions'])
+
+        # Calculate the most abundant function
+        category_counts = pd.Series(functional_categories).value_counts()
+        most_abundant_function = category_counts.idxmax() if not category_counts.empty else 'unknown function'
+        if most_abundant_function == "unknown function":
+            # Remove the 'unknown function' row
+            category_counts = category_counts.drop("unknown function", errors="ignore")
+            most_abundant_function = category_counts.idxmax() if not category_counts.empty else 'unknown function'
+        logger.debug(f"Most abundant function: {most_abundant_function=}")
+
+        # Get a unique list of functions
+        unique_functions = ", ".join(sorted(set(functional_categories)))
+        logger.debug(f"Most abundant function unique: {unique_functions=}")
+
+        return pd.Series([most_abundant_function, unique_functions], index=['most_abundant_function', 'unique_functions'])
+
+    # Apply the function to bacterial proteins
+    cluster_data = cluster_data.copy()  # Ensure we're working on a copy
+    cluster_data[['most_abundant_function', 'unique_functions']] = cluster_data['bacterial_proteins'].apply(
+        extract_functional_categories
+    )
+    logger.debug(f"{type(cluster_data)=}")
+    logger.debug(f"{cluster_data.head()=}")
+
+    return cluster_data
+
+
+def create_crassvirales_vs_bacterial_scatterplot_with_function(
+    cluster_data: pd.DataFrame, threshold: int, output_dir: str
+):
+    """
+    Create scatterplots of crassvirales vs bacterial data, colored by most abundant function.
+    """
+    logger.info(f"Processing threshold: {threshold}")
+
+    # Filter data by threshold
+    filtered_data = cluster_data[cluster_data['threshold'] == threshold].copy()
+    if filtered_data.empty:
+        logger.warning(f"No data for threshold {threshold}. Skipping...")
+        return
+
+    # Map function colors
+    # function_colors = {
+    #     "hypothetical protein": "#ff9999",
+    #     "moron": "#66b3ff",
+    #     "auxiliary metabolic gene": "#99ff99",
+    #     "host takeover": "#ffcc99",
+    #     "unknown": "#d3d3d3"  # Default for unknown functions
+    # }
+    if 'most_abundant_function' not in filtered_data.columns:
+        raise KeyError("Column 'most_abundant_function' not found in filtered data.")
+
+    filtered_data.loc[:, 'color'] = filtered_data['most_abundant_function'].map(FUNCTION_COLORS)
+
+    # Handle NaN values in the color column
+    if filtered_data['most_abundant_function'].isna().any():
+        logger.warning("Some 'most_abundant_function' values did not map to colors. Assigning default color for NaN.")
+        filtered_data['most_abundant_function'] = filtered_data['most_abundant_function'].fillna("#AAAAAA")  # Default gray color for unmapped functions
+
+    # Apply log10 transformation
+    filtered_data.loc[:, 'log_number_of_crassvirales'] = np.log10(
+        filtered_data['number_of_crassvirales'].replace(0, np.nan)).fillna(0)
+    filtered_data.loc[:, 'log_number_of_bacterial'] = np.log10(
+        filtered_data['number_of_bacterial'].replace(0, np.nan)).fillna(0)
+
+    # Generate scatterplot for absolute values
+    absolute_output_file = f"{output_dir}/scatterplot_crassvirales_vs_bacterial_threshold_{threshold}_absolute.png"
+    create_scatterplot(
+        filtered_data,
+        x_col='number_of_crassvirales',
+        y_col='number_of_bacterial',
+        x_label='Number of Crassvirales',
+        y_label='Number of Bacterial',
+        title=f'Number of Crassvirales vs. Number of Bacterial (Threshold {threshold})',
+        output_file=absolute_output_file,
+        is_column_transformed=None,
+        color_column_name="most_abundant_function"
+    )
+
+    # Generate scatterplot for log10-transformed values
+    log_output_file = f"{output_dir}/scatterplot_crassvirales_vs_bacterial_threshold_{threshold}_log10.png"
+    create_scatterplot(
+        filtered_data,
+        x_col='log_number_of_crassvirales',
+        y_col='log_number_of_bacterial',
+        x_label='Log10(Number of Crassvirales)',
+        y_label='Log10(Number of Bacterial)',
+        title=f'Log10(Number of Crassvirales) vs. Log10(Number of Bacterial) (Threshold {threshold})',
+        output_file=log_output_file,
+        is_column_transformed="log10",
+        color_column_name="most_abundant_function"
+    )
+
+
+def create_crassvirales_vs_bacterial_scatterplots_with_function_for_thresholds(
+        cluster_data: pd.DataFrame, output_dir: str):
+    """
+    Creates scatterplots for number_of_crassvirales vs. number_of_bacterial across different thresholds,
+    with colors representing the most abundant function.
+    """
+    for threshold in range(0, 91, 10):
+        create_crassvirales_vs_bacterial_scatterplot_with_function(
+            cluster_data, threshold, output_dir
+        )
+
+
 if __name__ == "__main__":
     # Configure logging
     logging.basicConfig(level=logging.INFO)
+    # logging.basicConfig(level=logging.DEBUG)
     logger = logging.getLogger(__name__)
 
     # File paths
     terl_tree_dir = "/mnt/c/crassvirales/phylomes/TerL_tree"
     tree_file = f"{terl_tree_dir}/terL_sequences_trimmed_merged_10gaps.treefile"
+    tree_leaves_dir = "/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/" \
+                      "2_trees_leaves"
     annotation_file = "/mnt/c/crassvirales/phylomes/supplementary_tables/phylome_taxonomy_s1.txt"
     cluster_data_file = "/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/" \
                         "2_trees_leaves/phylome_summary/tree_analysis_test/cluster_analysis_all_draco/rooted/" \
@@ -620,42 +820,63 @@ if __name__ == "__main__":
 
     output_scatterplot_crassvirales_vs_bacterial = f"{output_figures_dir}/number_of_crassvirales_vs_number_of_bacterial_scatterplot.png"
 
-    # Load data and parse tree
-    annotations = load_annotations(annotation_file)
-    tree = parse_tree(tree_file)
-
-    # Assign unique names to internal nodes
-    assign_internal_node_names(tree)
-
-    # Annotate tree based on family and host phylum
-    protein_contig_dict = annotate_tree(tree, annotations)
+    # # Load data and parse tree
+    # annotations = load_annotations(annotation_file)
+    # tree = parse_tree(tree_file)
+    #
+    # # Assign unique names to internal nodes
+    # assign_internal_node_names(tree)
+    #
+    # # Annotate tree based on family and host phylum
+    # protein_contig_dict = annotate_tree(tree, annotations)
 
     # Load and filter cluster data
     cluster_data = pd.read_csv(cluster_data_file, sep='\t')
-    filtered_data = cluster_data[cluster_data['threshold'] == 90]
+    # filtered_data = cluster_data[cluster_data['threshold'] == 90]
+    #
+    # # Initialize node features
+    # initialize_node_features(tree)
+    #
+    # # Annotate tree with cluster data
+    # tree = annotate_tree_with_clusters(tree, filtered_data, protein_contig_dict)
+    #
+    # # Save MRCA data to TSV
+    # save_mrca_data(tree, output_tsv_file)
+    #
+    # # Create separate tree copies for different pie chart visualizations
+    # tree_clusters = tree.copy()
+    # tree_clades = tree.copy()
+    # tree_bacterial = tree.copy()
+    #
+    # # Render and save each tree
+    # render_circular_tree(tree_clusters, f"{output_figures_dir}/annotated_tree_with_cluster_piecharts", size_attribute="number_of_clusters")
+    # render_circular_tree(tree_clades, f"{output_figures_dir}/annotated_tree_with_clade_piecharts", size_attribute="number_of_clades")
+    # render_circular_tree(tree_bacterial, f"{output_figures_dir}/annotated_tree_with_bacterial_piecharts", size_attribute="number_of_bacterial")
+    #
+    # # Generate scatterplots
+    # create_number_of_clades_vs_number_of_clusters_scatterplot(output_tsv_file, output_scatterplot_clades_vs_clusters)
+    # create_number_of_clades_vs_number_of_bacterial_scatterplot(output_tsv_file, output_scatterplot_clades_vs_bacterial)
+    #
+    # create_crassvirales_vs_bacterial_scatterplots_for_thresholds(cluster_data,
+    #                                                              output_figures_crassvirales_vs_all_dir)
 
-    # Initialize node features
-    initialize_node_features(tree)
+    # File paths
+    # merged_table_file = "/path/to/merged_table.tsv"
+    merged_table_file = f"{tree_leaves_dir}/phylome_summary_ncbi_ids_all_annotation_id_with_functions_and_pharokka.tsv"
+    # cluster_data_file = "/path/to/cluster_data.tsv"
 
-    # Annotate tree with cluster data
-    tree = annotate_tree_with_clusters(tree, filtered_data, protein_contig_dict)
+    # Load data
+    merged_table = load_merged_table(merged_table_file)
+    # cluster_data = pd.read_csv(cluster_data_file, sep='\t')
 
-    # Save MRCA data to TSV
-    save_mrca_data(tree, output_tsv_file)
+    # Map functions to cluster_data
+    cluster_data = map_functions_to_cluster_data(cluster_data, merged_table)
 
-    # Create separate tree copies for different pie chart visualizations
-    tree_clusters = tree.copy()
-    tree_clades = tree.copy()
-    tree_bacterial = tree.copy()
+    logger.info(f"{cluster_data.head()=}")
 
-    # Render and save each tree
-    render_circular_tree(tree_clusters, f"{output_figures_dir}/annotated_tree_with_cluster_piecharts", size_attribute="number_of_clusters")
-    render_circular_tree(tree_clades, f"{output_figures_dir}/annotated_tree_with_clade_piecharts", size_attribute="number_of_clades")
-    render_circular_tree(tree_bacterial, f"{output_figures_dir}/annotated_tree_with_bacterial_piecharts", size_attribute="number_of_bacterial")
+    # Output directory for scatterplots
+    output_figures_dir = f'{output_figures_dir}/pharokka_functions'
+    os.makedirs(output_figures_dir, exist_ok=True)
 
-    # Generate scatterplots
-    create_number_of_clades_vs_number_of_clusters_scatterplot(output_tsv_file, output_scatterplot_clades_vs_clusters)
-    create_number_of_clades_vs_number_of_bacterial_scatterplot(output_tsv_file, output_scatterplot_clades_vs_bacterial)
-
-    create_crassvirales_vs_bacterial_scatterplots_for_thresholds(cluster_data,
-                                                                 output_figures_crassvirales_vs_all_dir)
+    # Create scatterplots
+    create_crassvirales_vs_bacterial_scatterplots_with_function_for_thresholds(cluster_data, output_figures_dir)
