@@ -82,6 +82,7 @@ FUNCTION_COLORS = {
     "other": "#4deeea",
     "tail": "#74ee15",
     "transcription regulation": "#ffe700",
+    "unknown": "#AAAAAA",
     "unknown function": "#AAAAAA"
 }
 
@@ -807,6 +808,137 @@ def create_crassvirales_vs_bacterial_scatterplots_with_function_for_thresholds(
         )
 
 
+def load_table(file_path: str, sep: str = '\t') -> pd.DataFrame:
+    """
+    Load a table from a TSV file.
+
+    Args:
+        file_path (str): Path to the TSV file.
+        sep (str): Separator used in the TSV file (default is tab).
+
+    Returns:
+        pd.DataFrame: Loaded DataFrame.
+    """
+    return pd.read_csv(file_path, sep=sep)
+
+
+def merge_tables(
+    pharokka_table: pd.DataFrame,
+    yutin_table: pd.DataFrame,
+    merge_on: str,
+    columns_to_add: List[str]
+) -> pd.DataFrame:
+    """
+    Merge specified columns from the yutin table into the pharokka table.
+
+    Args:
+        pharokka_table (pd.DataFrame): The main table to merge into.
+        yutin_table (pd.DataFrame): The table with additional columns.
+        merge_on (str): Column name to merge on.
+        columns_to_add (List[str]): Columns from the yutin table to add to the pharokka table.
+
+    Returns:
+        pd.DataFrame: Merged DataFrame.
+    """
+    # Filter yutin_table to include only the necessary columns
+    yutin_filtered = yutin_table[[merge_on] + columns_to_add]
+
+    # Perform the merge
+    merged_table = pd.merge(pharokka_table, yutin_filtered, on=merge_on, how='left')
+
+    return merged_table
+
+
+def save_table(dataframe: pd.DataFrame, file_path: str, sep: str = '\t') -> None:
+    """
+    Save a DataFrame to a TSV file.
+
+    Args:
+        dataframe (pd.DataFrame): DataFrame to save.
+        file_path (str): Path to the output TSV file.
+        sep (str): Separator to use in the output file (default is tab).
+    """
+    dataframe.to_csv(file_path, sep=sep, index=False)
+
+
+def merge_pharokka_and_yutin_annotation(
+    pharokka_file: str,
+    yutin_file: str,
+    output_file: str,
+    merge_on: str = 'cluster_name',
+    columns_to_add: List[str] = ['function_yutin_uniq', 'function_yutin_nomultidomain_uniq', 'function_pfam_uniq']
+) -> None:
+    """
+    Main function to load, merge, and save the merged table.
+
+    Args:
+        pharokka_file (str): Path to the pharokka annotation table.
+        yutin_file (str): Path to the yutin annotation table.
+        output_file (str): Path to save the output merged table.
+        merge_on (str): Column to merge on (default is 'cluster_name').
+        columns_to_add (List[str]): Columns to add from the yutin table (default includes specific function columns).
+    """
+
+    def preprocess_set_column(column: pd.Series) -> pd.Series:
+        """
+        Preprocess a column containing sets as strings to transform values.
+
+        Args:
+            column (pd.Series): Column to preprocess.
+
+        Returns:
+            pd.Series: Transformed column.
+        """
+
+        def transform_value(value):
+            if pd.isna(value) or value == "set()":
+                return "unknown"
+            # Extract only the unique descriptors (after ":") and join them
+            try:
+                # Remove braces and split into individual items
+                items = value.strip("{}").split(", ")
+                cleaned_items = [item.split(":")[-1].strip() for item in items]
+                return ", ".join(sorted(set(cleaned_items))).replace("'", "") # Remove duplicates and sort
+            except Exception:
+                return value
+
+        return column.apply(transform_value)
+
+    # Load the tables
+    pharokka_table = load_table(pharokka_file)
+    yutin_table = load_table(yutin_file)
+
+    # Ensure column names are stripped of spaces
+    pharokka_table.columns = pharokka_table.columns.str.strip()
+    yutin_table.columns = yutin_table.columns.str.strip()
+
+    # Check if merge_on column exists in both tables
+    if merge_on not in pharokka_table.columns:
+        raise KeyError(f"'{merge_on}' not found in pharokka_table columns: {pharokka_table.columns.tolist()}")
+    if merge_on not in yutin_table.columns:
+        raise KeyError(f"'{merge_on}' not found in yutin_table columns: {yutin_table.columns.tolist()}")
+
+    # Check if all columns_to_add exist in yutin_table
+    missing_columns = [col for col in columns_to_add if col not in yutin_table.columns]
+    if missing_columns:
+        raise KeyError(f"Columns {missing_columns} not found in yutin_table.")
+
+    # Filter yutin_table to include only the necessary columns
+    yutin_filtered = yutin_table[[merge_on] + columns_to_add]
+
+    for column in ['function_yutin_uniq', 'function_yutin_nomultidomain_uniq', 'function_pfam_uniq']:
+        if column in yutin_filtered.columns:
+            yutin_filtered = yutin_filtered.copy()  # Ensure we're working on a copy
+            yutin_filtered[column] = preprocess_set_column(yutin_filtered[column])
+
+    # Perform the merge
+    merged_table = pd.merge(pharokka_table, yutin_filtered, on=merge_on, how='left')
+
+    # Save the merged table
+    save_table(merged_table, output_file)
+
+    return merged_table
+
 if __name__ == "__main__":
     # Configure logging
     logging.basicConfig(level=logging.INFO)
@@ -819,8 +951,9 @@ if __name__ == "__main__":
     tree_leaves_dir = "/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/" \
                       "2_trees_leaves"
     annotation_file = "/mnt/c/crassvirales/phylomes/supplementary_tables/phylome_taxonomy_s1.txt"
-    cluster_data_file = "/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/" \
-                        "2_trees_leaves/phylome_summary/tree_analysis_test/cluster_analysis_all_draco/rooted/" \
+    concatenated_clusters_dir = "/mnt/c/crassvirales/Bas_phages_large/Bas_phages/5_nr_screening/4_merged_ncbi_crassvirales/" \
+                                "2_trees_leaves/phylome_summary/tree_analysis_test/cluster_analysis_all_draco/rooted"
+    cluster_data_file = f"{concatenated_clusters_dir}/" \
                         "concatenated_clusters_data.tsv"
     output_tsv_file = f"{terl_tree_dir}/annotated_tree_mrca_node_data.tsv"
 
@@ -875,17 +1008,17 @@ if __name__ == "__main__":
 
     # File paths
     # merged_table_file = "/path/to/merged_table.tsv"
-    merged_table_file = f"{tree_leaves_dir}/phylome_summary_ncbi_ids_all_annotation_id_with_functions_and_pharokka.tsv"
+    pharokka_annotation_file = f"{tree_leaves_dir}/phylome_summary_ncbi_ids_all_annotation_id_with_functions_and_pharokka.tsv"
     # cluster_data_file = "/path/to/cluster_data.tsv"
 
     # Load data
-    merged_table = load_merged_table(merged_table_file)
+    pharokka_annotation = load_merged_table(pharokka_annotation_file)
     # cluster_data = pd.read_csv(cluster_data_file, sep='\t')
 
     # Map functions to cluster_data
-    cluster_data = map_functions_to_cluster_data(cluster_data, merged_table)
+    cluster_data = map_functions_to_cluster_data(cluster_data, pharokka_annotation)
 
-    logger.info(f"{cluster_data.head()=}")
+    logger.debug(f"{cluster_data.head()=}")
 
     # Output directory for scatterplots
     output_figures_dir = f'{output_figures_dir}/pharokka_functions'
@@ -893,3 +1026,15 @@ if __name__ == "__main__":
 
     # Create scatterplots
     create_crassvirales_vs_bacterial_scatterplots_with_function_for_thresholds(cluster_data, output_figures_dir)
+
+    # Save the processed cluster_data to a TSV file
+    output_cluster_data_file = f"{concatenated_clusters_dir}/concatenated_clusters_data_with_annotation_pharokka.tsv"
+    cluster_data.to_csv(output_cluster_data_file, sep='\t', index=False)
+    logger.info(f"Processed cluster_data saved to {output_cluster_data_file}")
+
+    pharokka_file = cluster_data
+    yutin_file = f"{concatenated_clusters_dir}/concatenated_clusters_data_annotated.tsv"
+    output_file = f"{concatenated_clusters_dir}/concatenated_clusters_data_with_annotation_pharokka_yutin.tsv"
+
+    # Run the main function
+    merge_pharokka_and_yutin_annotation(output_cluster_data_file, yutin_file, output_file)
