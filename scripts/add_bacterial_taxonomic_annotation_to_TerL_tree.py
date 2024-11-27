@@ -939,6 +939,42 @@ def merge_pharokka_and_yutin_annotation(
 
     return merged_table
 
+
+def filter_and_save_by_threshold(
+        input_file: str,
+        output_dir: str,
+        threshold_column: str = 'threshold',
+        sort_column: str = 'number_of_bacterial'
+        ) -> None:
+    """
+    Filter a table by threshold values, sort, and save to separate files.
+
+    Args:
+        input_file (str): Path to the input file.
+        output_dir (str): Directory to save the filtered files.
+        threshold_column (str): Column name to filter by threshold (default is 'threshold').
+        sort_column (str): Column name to sort by (default is 'number_of_bacterial').
+    """
+    # Load the table
+    data = pd.read_csv(input_file, sep='\t')
+
+    # Ensure the output directory exists
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Process for each threshold in the range
+    for i in range(0, 101, 10):
+        # Filter by threshold
+        filtered_data = data[data[threshold_column] == i]
+
+        # Sort by the specified column in descending order
+        sorted_data = filtered_data.sort_values(by=sort_column, ascending=False)
+
+        # Save to a new file with threshold in the filename
+        output_file = f"{output_dir}/concatenated_clusters_data_with_annotation_pharokka_yutin_filtered_threshold_{i}.tsv"
+        sorted_data.to_csv(output_file, sep='\t', index=False)
+        print(f"Saved filtered table for threshold {i} to {output_file}")
+
+
 if __name__ == "__main__":
     # Configure logging
     logging.basicConfig(level=logging.INFO)
@@ -1034,7 +1070,9 @@ if __name__ == "__main__":
 
     pharokka_file = cluster_data
     yutin_file = f"{concatenated_clusters_dir}/concatenated_clusters_data_annotated.tsv"
-    output_file = f"{concatenated_clusters_dir}/concatenated_clusters_data_with_annotation_pharokka_yutin.tsv"
+    cluster_data_pharokka_yutin_file = f"{concatenated_clusters_dir}/concatenated_clusters_data_with_annotation_pharokka_yutin.tsv"
 
     # Run the main function
-    merge_pharokka_and_yutin_annotation(output_cluster_data_file, yutin_file, output_file)
+    merge_pharokka_and_yutin_annotation(output_cluster_data_file, yutin_file, cluster_data_pharokka_yutin_file)
+
+    filter_and_save_by_threshold(cluster_data_pharokka_yutin_file, concatenated_clusters_dir)
