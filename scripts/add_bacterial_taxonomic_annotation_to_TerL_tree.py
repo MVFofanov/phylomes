@@ -73,17 +73,16 @@ FUNCTION_COLORS = {
     # "host takeover": "#ffcc99",
     # "unknown": "#d3d3d3" , # Default for unknown functions
 
-    "unknown function": "#AAAAAA",
+    "connector": "#5A5A5A",
     "DNA, RNA and nucleotide metabolism": "#f000ff",
-    "other": "#4deeea",
     "head and packaging": "#ff008d",
-    "tail": "#74ee15",
+    "integration and excision": "#E0B0FF",
     "lysis": "#001eff",
     "moron, auxiliary metabolic gene and host takeover": "#8900ff",
+    "other": "#4deeea",
+    "tail": "#74ee15",
     "transcription regulation": "#ffe700",
-    "integration and excision": "#E0B0FF",
-    "connector": "#5A5A5A"
-
+    "unknown function": "#AAAAAA"
 }
 
 
@@ -429,11 +428,12 @@ def create_scatterplot(data: pd.DataFrame, x_col: str, y_col: str, x_label: str,
 
     # Replace NaN values in the color column with a default color
     if data['color'].isna().any():
-        logger.warning("Some 'color' values are NaN. Assigning default gray color.")
+        logger.debug("Some 'color' values are NaN. Assigning default gray color.")
         data['color'] = data['color'].fillna("#AAAAAA")  # Default gray color for NaN
 
     # Scatter plot
-    plt.figure(figsize=(10, 8))
+    # plt.figure(figsize=(10, 8))
+    plt.figure(figsize=(14, 8))  # Increase figure size
     plt.scatter(
         data[x_col],
         data[y_col],
@@ -476,10 +476,23 @@ def create_scatterplot(data: pd.DataFrame, x_col: str, y_col: str, x_label: str,
         )
         for color_column, color in colors.items()
     ]
-    plt.legend(handles=handles, title=color_column_name, title_fontsize=16, fontsize=16)
+    # plt.legend(handles=handles, title=color_column_name, title_fontsize=16, fontsize=16)
+
+    plt.legend(
+        handles=handles,
+        title=color_column_name,
+        title_fontsize=16,
+        fontsize=16,
+        loc='center left',  # Position legend outside the plot
+        bbox_to_anchor=(1, 0.5),  # Place legend to the right of the plot
+    )
 
     # Save the plot
-    plt.savefig(output_file)
+    # plt.savefig(output_file)
+
+    # Ensure tight layout to include legend
+    plt.tight_layout(rect=[0, 0, 0.85, 1])  # Adjust right boundary for the legend
+    plt.savefig(output_file, bbox_inches='tight')  # Save with adjusted bounding box
     plt.close()
 
     logger.info(f"Scatterplot saved as {output_file}")
@@ -744,7 +757,7 @@ def create_crassvirales_vs_bacterial_scatterplot_with_function(
 
     # Handle NaN values in the color column
     if filtered_data['most_abundant_function'].isna().any():
-        logger.warning("Some 'most_abundant_function' values did not map to colors. Assigning default color for NaN.")
+        logger.debug("Some 'most_abundant_function' values did not map to colors. Assigning default color for NaN.")
         filtered_data['most_abundant_function'] = filtered_data['most_abundant_function'].fillna("#AAAAAA")  # Default gray color for unmapped functions
 
     # Apply log10 transformation
