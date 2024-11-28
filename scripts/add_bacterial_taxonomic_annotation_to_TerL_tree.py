@@ -975,6 +975,52 @@ def filter_and_save_by_threshold(
         print(f"Saved filtered table for threshold {i} to {output_file}")
 
 
+def load_genome_ids(file_path: str) -> List[str]:
+    """
+    Load genome IDs from a text file where each line is a genome ID.
+
+    Args:
+        file_path (str): Path to the text file containing genome IDs.
+
+    Returns:
+        List[str]: List of genome IDs.
+    """
+    with open(file_path, 'r') as file:
+        genome_ids = [line.strip() for line in file if line.strip()]
+    return genome_ids
+
+
+def add_is_genome_downloaded_column(
+    input_file: str,
+    genome_ids_file: str,
+    output_file: str,
+    sequence_column: str = 'Nucleotide_Sequence_Name',
+    new_column: str = 'is_genome_downloaded'
+) -> None:
+    """
+    Add a new column 'is_genome_downloaded' to a table based on genome IDs.
+
+    Args:
+        input_file (str): Path to the input TSV file.
+        genome_ids_file (str): Path to the text file containing genome IDs.
+        output_file (str): Path to save the updated TSV file.
+        sequence_column (str): Column name to match against genome IDs (default is 'Nucleotide_Sequence_Name').
+        new_column (str): Name of the new column to add (default is 'is_genome_downloaded').
+    """
+    # Load the input TSV
+    data = pd.read_csv(input_file, sep='\t')
+
+    # Load the genome IDs
+    genome_ids = set(load_genome_ids(genome_ids_file))
+
+    # Add the new column
+    data[new_column] = data[sequence_column].apply(lambda x: 'Yes' if x in genome_ids else 'No')
+
+    # Save the updated table
+    data.to_csv(output_file, sep='\t', index=False)
+    print(f"Updated table saved to {output_file}")
+
+
 if __name__ == "__main__":
     # Configure logging
     logging.basicConfig(level=logging.INFO)
@@ -1074,5 +1120,10 @@ if __name__ == "__main__":
 
     # Run the main function
     merge_pharokka_and_yutin_annotation(output_cluster_data_file, yutin_file, cluster_data_pharokka_yutin_file)
+
+    genome_ids_file = f"{tree_leaves_dir}/all_ncbi_genomes_ids_uniq.txt"
+    pharokka_annotation_downloaded_genomes_file = f"{tree_leaves_dir}/phylome_summary_ncbi_ids_all_annotation_id_with_functions_and_pharokka_downloaded_genomes.tsv"
+
+    add_is_genome_downloaded_column(pharokka_annotation_file, genome_ids_file, pharokka_annotation_downloaded_genomes_file)
 
     filter_and_save_by_threshold(cluster_data_pharokka_yutin_file, concatenated_clusters_dir)
