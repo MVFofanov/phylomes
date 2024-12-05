@@ -8,7 +8,7 @@ def genbank_to_gff3(input_file: str, output_file: str, output_dir: str) -> None:
     """Convert GenBank to GFF3 table, include only CDS features, with protein IDs and products."""
     with open(output_file, "w") as out_handle:
         try:
-            for record in SeqIO.parse(input_file, "genbank", skip=True):
+            for record in SeqIO.parse(input_file, "genbank"):
                 for feature in record.features:
                     if feature.type == "CDS":  # Only process CDS features
                         try:
