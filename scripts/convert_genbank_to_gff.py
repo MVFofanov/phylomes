@@ -28,11 +28,14 @@ def genbank_to_gff3(input_file: str, output_file: str, output_dir: str) -> None:
                             # Log problematic features and continue
                             with open(f"{output_dir}/problematic_features.log", "a") as log_file:
                                 log_file.write(f"Problem with feature in {record.id}: {str(feature)}\n")
+                                log_file.write(f"Problem with {record.id} genome.\n")
                                 log_file.write(f"Error: {str(e)}\n")
         except Exception as e:
             # Log parsing errors for the entire record
             with open(f"{output_dir}/problematic_records.log", "a") as log_file:
-                log_file.write(f"Problem parsing {input_file}:\n{str(e)}\n")
+                log_file.write(f"Problem parsing {input_file}:\n"
+                               f"Problem with {record.id} genome.\n"
+                               f"{str(e)}\n")
 
 
 def process_large_files(input_dir: str, output_dir: str) -> None:
