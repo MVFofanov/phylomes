@@ -44,7 +44,7 @@ def process_large_files(input_dir: str, output_dir: str) -> None:
     for filename in os.listdir(input_dir):
         if filename.endswith(".gb") or filename.endswith(".genbank"):
             input_file: str = os.path.join(input_dir, filename)
-            output_file: str = os.path.join(output_dir, f"{os.path.splitext(filename)[0]}.gff3")
+            output_file: str = os.path.join(output_dir, f"{os.path.splitext(filename)[0]}.gff")
             print(f"Processing {filename} -> {output_file}")
             genbank_to_gff3(input_file, output_file, output_dir)
 
