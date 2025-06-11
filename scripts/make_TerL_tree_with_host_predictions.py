@@ -51,45 +51,66 @@ def load_host_composition_dict(tsv_path: str) -> dict:
     df = df.set_index('crassvirales_genome')
     return df.to_dict(orient='index')
 
+def empty_text_face(width=10):
+    return TextFace(" " * width, fsize=10)
+
+def empty_face(width=10, height=10):
+    return RectFace(width=width, height=height, fgcolor="white", bgcolor="white")
+
 # === Main Leaf Annotation Function ===
 def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dict):
     for leaf in tree.iter_leaves():
         contig_id = extract_contig_id(leaf.name)
         row = annotations[annotations['contig_id'] == contig_id]
 
-        if row.empty:
-            continue
+        family = "unknown"
+        host_phylum = "unknown"
+        family_color = None
+        phylum_color = None
 
-        row = row.iloc[0]
-        family = row.get('family_crassus', 'unknown')
-        host_phylum = row.get('host_phylum', 'unknown')
+        if not row.empty:
+            row = row.iloc[0]
+            family = row.get('family_crassus', 'unknown')
+            host_phylum = row.get('host_phylum', 'unknown')
+            family_color = CRASSVIRALES_COLOR_SCHEME.get(family)
+            phylum_color = BACTERIAL_PHYLUM_COLORS.get(host_phylum)
 
-        # === Set node color ===
-        if family in CRASSVIRALES_COLOR_SCHEME:
-            nstyle = NodeStyle()
-            nstyle["fgcolor"] = CRASSVIRALES_COLOR_SCHEME[family]
-            nstyle["size"] = 6
-            leaf.set_style(nstyle)
+            # Node style if family has color
+            if family_color:
+                nstyle = NodeStyle()
+                nstyle["fgcolor"] = family_color
+                nstyle["size"] = 6
+                leaf.set_style(nstyle)
 
-        # === Add face labels ===
-        leaf.add_face(TextFace(f"Family: {family}", fsize=10,
-                               fgcolor=CRASSVIRALES_COLOR_SCHEME.get(family, "black")), column=0)
-        leaf.add_face(TextFace(f"Host Phylum: {host_phylum}", fsize=10,
-                               fgcolor=BACTERIAL_PHYLUM_COLORS.get(host_phylum, "black")), column=1)
-        leaf.add_face(TextFace(f"Contig: {contig_id}", fsize=10), column=2)
+        # Column 0: Crassvirales color box
+        family_box = RectFace(10, 10, family_color, family_color) if family_color else RectFace(10, 10, "black", "white")
+        leaf.add_face(family_box, column=0, position="aligned")
 
-        # === Add barplot if genome data is available ===
+        # Column 1: Host phylum color box
+        phylum_box = RectFace(10, 10, phylum_color, phylum_color) if phylum_color else empty_face()
+        leaf.add_face(phylum_box, column=1, position="aligned")
+
+        # Column 2: Family label (or empty)
+        leaf.add_face(TextFace(f"Family: {family}", fsize=10, fgcolor=family_color or "black"), column=2, position="aligned")
+
+        # Column 3: Host label (or empty)
+        leaf.add_face(TextFace(f"Host Phylum: {host_phylum}", fsize=10, fgcolor=phylum_color or "black"), column=3, position="aligned")
+
+        # Column 4: Contig ID (always exists)
+        leaf.add_face(TextFace(f"Contig: {contig_id}", fsize=10), column=4, position="aligned")
+
+        # Column 5: Barplot or blank
         if contig_id in genome_data:
             genome_row = genome_data[contig_id]
             values = [genome_row.get(k, 0) for k in BAR_KEYS]
             colors = [BAR_COLORS[k] for k in BAR_KEYS]
-            bar_face = faces.BarChartFace(
-                values,
-                width=100,
-                height=20,
-                colors=colors
-            )
-            leaf.add_face(bar_face, column=3, position="aligned")
+            bar_face = faces.BarChartFace(values, width=100, height=20, colors=colors)
+            leaf.add_face(bar_face, column=5, position="aligned")
+        else:
+            leaf.add_face(empty_face(width=100), column=5, position="aligned")
+
+        # DEBUG: check that all aligned columns are used
+        # print(f"{leaf.name} → aligned cols: 0 to 5 added ✔")
 
 # === Render Function ===
 def render_tree(tree: Tree, output_file: str):
