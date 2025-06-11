@@ -83,31 +83,33 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
                 leaf.set_style(nstyle)
 
         # Column 0: Crassvirales color box
-        family_box = RectFace(10, 10, family_color, family_color) if family_color else RectFace(10, 10, "black", "white")
-        leaf.add_face(family_box, column=0, position="aligned")
+        # === Add family and phylum color boxes immediately after leaf name ===
+        leaf.add_face(TextFace("  "), column=0, position="branch-right")  # spacing from leaf name
+        family_box = RectFace(10, 10, family_color, family_color) if family_color else RectFace(10, 10, "black",
+                                                                                                "white")
+        leaf.add_face(family_box, column=1, position="branch-right")
 
-        # Column 1: Host phylum color box
-        phylum_box = RectFace(10, 10, phylum_color, phylum_color) if phylum_color else empty_face()
-        leaf.add_face(phylum_box, column=1, position="aligned")
+        leaf.add_face(TextFace("  "), column=2, position="branch-right")  # spacing between boxes
+        phylum_box = RectFace(10, 10, phylum_color, phylum_color) if phylum_color else RectFace(10, 10, "black", "white")
+        leaf.add_face(phylum_box, column=3, position="branch-right")
 
-        # Column 2: Family label (or empty)
-        leaf.add_face(TextFace(f"Family: {family}", fsize=10, fgcolor=family_color or "black"), column=2, position="aligned")
+        leaf.add_face(TextFace("   "), column=4, position="branch-right")  # spacing before aligned faces
 
-        # Column 3: Host label (or empty)
-        leaf.add_face(TextFace(f"Host Phylum: {host_phylum}", fsize=10, fgcolor=phylum_color or "black"), column=3, position="aligned")
+        # === Remaining info (aligned for layout)
+        leaf.add_face(TextFace(f"Family: {family}", fsize=10, fgcolor=family_color or "black"), column=5,
+                      position="aligned")
+        leaf.add_face(TextFace(f"Host Phylum: {host_phylum}", fsize=10, fgcolor=phylum_color or "black"),
+                      column=6, position="aligned")
+        leaf.add_face(TextFace(f"Contig: {contig_id}", fsize=10), column=7, position="aligned")
 
-        # Column 4: Contig ID (always exists)
-        leaf.add_face(TextFace(f"Contig: {contig_id}", fsize=10), column=4, position="aligned")
-
-        # Column 5: Barplot or blank
         if contig_id in genome_data:
             genome_row = genome_data[contig_id]
             values = [genome_row.get(k, 0) for k in BAR_KEYS]
             colors = [BAR_COLORS[k] for k in BAR_KEYS]
             bar_face = faces.BarChartFace(values, width=100, height=20, colors=colors)
-            leaf.add_face(bar_face, column=5, position="aligned")
+            leaf.add_face(bar_face, column=8, position="aligned")
         else:
-            leaf.add_face(empty_face(width=100), column=5, position="aligned")
+            leaf.add_face(empty_face(width=100), column=8, position="aligned")
 
         # DEBUG: check that all aligned columns are used
         # print(f"{leaf.name} → aligned cols: 0 to 5 added ✔")
