@@ -58,7 +58,7 @@ def empty_face(width=10, height=10):
     return RectFace(width=width, height=height, fgcolor="white", bgcolor="white")
 
 # === Main Leaf Annotation Function ===
-def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dict):
+def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dict, show_labels: bool):
     for leaf in tree.iter_leaves():
         contig_id = extract_contig_id(leaf.name)
         row = annotations[annotations['contig_id'] == contig_id]
@@ -96,11 +96,12 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
         leaf.add_face(TextFace("   "), column=4, position="branch-right")  # spacing before aligned faces
 
         # === Remaining info (aligned for layout)
-        leaf.add_face(TextFace(f"Family: {family}", fsize=10, fgcolor=family_color or "black"), column=5,
-                      position="aligned")
-        leaf.add_face(TextFace(f"Host Phylum: {host_phylum}", fsize=10, fgcolor=phylum_color or "black"),
-                      column=6, position="aligned")
-        leaf.add_face(TextFace(f"Contig: {contig_id}", fsize=10), column=7, position="aligned")
+        if show_labels:
+            leaf.add_face(TextFace(f"Family: {family}", fsize=10, fgcolor=family_color or "black"), column=5,
+                          position="aligned")
+            leaf.add_face(TextFace(f"Host Phylum: {host_phylum}", fsize=10, fgcolor=phylum_color or "black"), column=6,
+                          position="aligned")
+            leaf.add_face(TextFace(f"Contig: {contig_id}", fsize=10), column=7, position="aligned")
 
         if contig_id in genome_data:
             genome_row = genome_data[contig_id]
@@ -115,10 +116,10 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
         # print(f"{leaf.name} → aligned cols: 0 to 5 added ✔")
 
 # === Render Function ===
-def render_tree(tree: Tree, output_file: str):
+def render_tree(tree: Tree, output_file: str, show_labels: bool = False):
     ts = TreeStyle()
     ts.mode = "r"
-    ts.show_leaf_name = False
+    ts.show_leaf_name = show_labels  # ✅ Control visibility of leaf labels
     ts.show_branch_length = False
     ts.show_branch_support = False
 
@@ -160,7 +161,9 @@ if __name__ == "__main__":
     annotations = pd.read_csv(annotation_file, sep="\t")
     genome_data = load_host_composition_dict(barplot_tsv)
 
-    annotate_tree_leaves(tree, annotations, genome_data)
-    render_tree(tree, output_svg)
+    #show_labels = False  # or True, depending on your needs
+
+    annotate_tree_leaves(tree, annotations, genome_data, show_labels=True) # show annotation text line or not
+    render_tree(tree, output_svg, show_labels=False) # show gene leave labels or not
 
     print(f"✅ Annotated tree saved to {output_svg}")
