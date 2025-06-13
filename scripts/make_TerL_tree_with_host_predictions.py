@@ -6,6 +6,9 @@ import pandas as pd
 matplotlib.use('Agg')
 os.environ["QT_QPA_PLATFORM"] = "offscreen"  # Ensure Qt offscreen rendering
 
+# === Global Annotation Size Setting ===
+ANNOTATION_SIZE = 20
+
 # === Color Mappings ===
 CRASSVIRALES_COLOR_SCHEME = {
     "Intestiviridae": "#EE3B3B",
@@ -51,10 +54,10 @@ def load_host_composition_dict(tsv_path: str) -> dict:
     df = df.set_index('crassvirales_genome')
     return df.to_dict(orient='index')
 
-def empty_text_face(width=10):
-    return TextFace(" " * width, fsize=10)
+def empty_text_face(width=ANNOTATION_SIZE):
+    return TextFace(" " * width, fsize=ANNOTATION_SIZE)
 
-def empty_face(width=10, height=10):
+def empty_face(width=ANNOTATION_SIZE, height=ANNOTATION_SIZE):
     return RectFace(width=width, height=height, fgcolor="white", bgcolor="white")
 
 # === Main Leaf Annotation Function ===
@@ -82,25 +85,25 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
                 leaf.set_style(nstyle)
 
         # === Always add all columns, even if values are missing ===
-        family_box = RectFace(10, 10, family_color, family_color) if family_color else RectFace(10, 10, "black", "white")
-        phylum_box = RectFace(10, 10, phylum_color, phylum_color) if phylum_color else RectFace(10, 10, "black", "white")
+        family_box = RectFace(ANNOTATION_SIZE, ANNOTATION_SIZE, family_color,
+                              family_color) if family_color else RectFace(ANNOTATION_SIZE, ANNOTATION_SIZE, "black", "white")
+        phylum_box = RectFace(ANNOTATION_SIZE, ANNOTATION_SIZE, phylum_color,
+                              phylum_color) if phylum_color else RectFace(ANNOTATION_SIZE, ANNOTATION_SIZE, "black", "white")
 
-        leaf.add_face(family_box, column=0, position="aligned")
-
-        # Spacer to separate the boxes visually
-        spacer = RectFace(5, 10, fgcolor="white", bgcolor="white")
-        leaf.add_face(spacer, column=1, position="aligned")
-
-        leaf.add_face(phylum_box, column=2, position="aligned")
+        spacer = RectFace(ANNOTATION_SIZE, ANNOTATION_SIZE, fgcolor="white", bgcolor="white")
 
         if show_labels:
-            label1 = TextFace(f"Family: {family}", fsize=10, fgcolor=family_color or "black")
-            label2 = TextFace(f"Host Phylum: {host_phylum}", fsize=10, fgcolor=phylum_color or "black")
-            label3 = TextFace(f"Contig: {contig_id}", fsize=10)
+            label1 = TextFace(f"Family: {family}", fsize=ANNOTATION_SIZE, fgcolor=family_color or "black")
+            label2 = TextFace(f"Host Phylum: {host_phylum}", fsize=ANNOTATION_SIZE, fgcolor=phylum_color or "black")
+            label3 = TextFace(f"Contig: {contig_id}", fsize=ANNOTATION_SIZE)
         else:
-            label1 = empty_text_face(15)
-            label2 = empty_text_face(15)
-            label3 = empty_text_face(15)
+            label1 = empty_text_face()
+            label2 = empty_text_face()
+            label3 = empty_text_face()
+
+        leaf.add_face(family_box, column=0, position="aligned")
+        leaf.add_face(spacer, column=1, position="aligned")
+        leaf.add_face(phylum_box, column=2, position="aligned")
 
         leaf.add_face(label1, column=3, position="aligned")
         leaf.add_face(label2, column=4, position="aligned")
@@ -110,38 +113,51 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
             genome_row = genome_data[contig_id]
             values = [genome_row.get(k, 0) for k in BAR_KEYS]
             colors = [BAR_COLORS[k] for k in BAR_KEYS]
-            bar_face = faces.BarChartFace(values, width=100, height=20, colors=colors)
+            bar_face = faces.BarChartFace(
+                values,
+                width=5 * ANNOTATION_SIZE,
+                height=int(ANNOTATION_SIZE * 0.8),
+                colors=colors
+            )
         else:
-            bar_face = empty_face(width=100, height=20)
+            bar_face = empty_face(width=5 * ANNOTATION_SIZE, height=int(ANNOTATION_SIZE * 0.8))
 
         leaf.add_face(bar_face, column=6, position="aligned")
 
 # === Render Function ===
-def render_tree(tree: Tree, output_file: str, show_labels: bool = False):
-    ts = TreeStyle()
-    ts.mode = "r"
-    ts.show_leaf_name = show_labels  # ✅ Control visibility of leaf labels
-    ts.show_branch_length = False
-    ts.show_branch_support = False
+def render_tree(tree: Tree, output_file_prefix: str, show_labels: bool = False):
+    def build_tree_style(mode: str) -> TreeStyle:
+        ts = TreeStyle()
+        ts.mode = mode  # 'r' = rectangular, 'c' = circular
+        ts.show_leaf_name = show_labels
+        ts.show_branch_length = False
+        ts.show_branch_support = False
 
-    legend_items = [
-        ("Bacteroidetes", BAR_COLORS['num_Bacteroidetes']),
-        ("Bacillota", BAR_COLORS['num_Bacillota']),
-        ("Proteobacteria", BAR_COLORS['num_Proteobacteria']),
-        ("Actinobacteria", BAR_COLORS['num_Actinobacteria']),
-        ("Other", BAR_COLORS['num_Other']),
-        ("Unknown", BAR_COLORS['num_unknown']),
-    ]
+        legend_items = [
+            ("Bacteroidetes", BAR_COLORS['num_Bacteroidetes']),
+            ("Bacillota", BAR_COLORS['num_Bacillota']),
+            ("Proteobacteria", BAR_COLORS['num_Proteobacteria']),
+            ("Actinobacteria", BAR_COLORS['num_Actinobacteria']),
+            ("Other", BAR_COLORS['num_Other']),
+            ("Unknown", BAR_COLORS['num_unknown']),
+        ]
 
-    for label, color in legend_items:
-        box = RectFace(width=10, height=10, fgcolor=color, bgcolor=color)
-        text = TextFace(f" {label}", fsize=10)
-        ts.legend.add_face(box, column=0)
-        ts.legend.add_face(text, column=1)
+        for label, color in legend_items:
+            box = RectFace(width=ANNOTATION_SIZE, height=ANNOTATION_SIZE, fgcolor=color, bgcolor=color)
+            text = TextFace(f" {label}", fsize=ANNOTATION_SIZE)
+            ts.legend.add_face(box, column=0)
+            ts.legend.add_face(text, column=1)
 
-    ts.legend_position = 1  # Top-right
+        ts.legend_position = 1  # Top-right
+        return ts
 
-    tree.render(output_file, w=1800, units="px", tree_style=ts)
+    # === Rectangular version
+    ts_rect = build_tree_style("r")
+    tree.render(f"{output_file_prefix}_rectangular.svg", w=1800, units="px", tree_style=ts_rect)
+
+    # === Circular version
+    ts_circ = build_tree_style("c")
+    tree.render(f"{output_file_prefix}_circular.svg", w=1800, units="px", tree_style=ts_circ)
 
 
 # === Main Entry Point ===
@@ -155,7 +171,8 @@ if __name__ == "__main__":
 
     output_dir = os.path.join(base_dir, "TerL_tree")
     os.makedirs(output_dir, exist_ok=True)
-    output_svg = f"{output_dir}/annotated_tree.svg"
+    #output_svg = f"{output_dir}/annotated_tree.svg"
+    output_prefix = f"{output_dir}/annotated_tree"
 
     # === RUN ===
     tree = Tree(tree_file, format=1)
@@ -165,6 +182,6 @@ if __name__ == "__main__":
     #show_labels = False  # or True, depending on your needs
 
     annotate_tree_leaves(tree, annotations, genome_data, show_labels=False) # show annotation text line or not
-    render_tree(tree, output_svg, show_labels=False) # show gene leave labels or not
+    render_tree(tree, output_prefix, show_labels=False) # show gene leave labels or not
 
-    print(f"✅ Annotated tree saved to {output_svg}")
+    print(f"✅ Annotated tree saved to {output_prefix}")
