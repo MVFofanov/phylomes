@@ -122,7 +122,7 @@ def create_stacked_bar_face_scaled(values: list, colors: list, max_total: int, m
     plt.tight_layout(pad=0)
 
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-    fig.savefig(tmp.name, format='png', bbox_inches='tight', pad_inches=0, transparent=True)
+    fig.savefig(tmp.name, format='png', bbox_inches='tight', pad_inches=0, transparent=False)
     plt.close(fig)
 
     return faces.ImgFace(tmp.name)
@@ -186,7 +186,7 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
             values = [genome_row.get(k, 0) for k in BAR_KEYS]
             colors = [BAR_COLORS[k] for k in BAR_KEYS]
             bar_face = create_stacked_bar_face_scaled(values, colors, max_total=max_total,
-                                                      max_width=200 * annotation_size,
+                                                      max_width=500 * annotation_size,
                                                       height=annotation_size)
         else:
             bar_face = empty_face(width=5 * annotation_size, height=annotation_size)
