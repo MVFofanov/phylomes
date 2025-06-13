@@ -86,7 +86,12 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
         phylum_box = RectFace(10, 10, phylum_color, phylum_color) if phylum_color else RectFace(10, 10, "black", "white")
 
         leaf.add_face(family_box, column=0, position="aligned")
-        leaf.add_face(phylum_box, column=1, position="aligned")
+
+        # Spacer to separate the boxes visually
+        spacer = RectFace(5, 10, fgcolor="white", bgcolor="white")
+        leaf.add_face(spacer, column=1, position="aligned")
+
+        leaf.add_face(phylum_box, column=2, position="aligned")
 
         if show_labels:
             label1 = TextFace(f"Family: {family}", fsize=10, fgcolor=family_color or "black")
@@ -97,9 +102,9 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
             label2 = empty_text_face(15)
             label3 = empty_text_face(15)
 
-        leaf.add_face(label1, column=2, position="aligned")
-        leaf.add_face(label2, column=3, position="aligned")
-        leaf.add_face(label3, column=4, position="aligned")
+        leaf.add_face(label1, column=3, position="aligned")
+        leaf.add_face(label2, column=4, position="aligned")
+        leaf.add_face(label3, column=5, position="aligned")
 
         if contig_id in genome_data:
             genome_row = genome_data[contig_id]
@@ -109,7 +114,7 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
         else:
             bar_face = empty_face(width=100, height=20)
 
-        leaf.add_face(bar_face, column=5, position="aligned")
+        leaf.add_face(bar_face, column=6, position="aligned")
 
 # === Render Function ===
 def render_tree(tree: Tree, output_file: str, show_labels: bool = False):
