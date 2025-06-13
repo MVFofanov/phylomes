@@ -13,6 +13,9 @@ os.environ["QT_QPA_PLATFORM"] = "offscreen"  # Ensure Qt offscreen rendering
 
 # === Global Annotation Size Setting ===
 ANNOTATION_SIZE = 20
+BRANCH_THICKNESS = 4
+NODE_SIZE = 6
+
 
 # === Color Mappings ===
 CRASSVIRALES_COLOR_SCHEME = {
@@ -125,7 +128,7 @@ def create_stacked_bar_face_scaled(values: list, colors: list, max_total: int, m
     return faces.ImgFace(tmp.name)
 
 # === Main Leaf Annotation Function ===
-def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dict, max_total: int, show_labels: bool):
+def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dict, max_total: int, show_labels: bool, annotation_size: int):
     for leaf in tree.iter_leaves():
         contig_id = extract_contig_id(leaf.name)
         row = annotations[annotations['contig_id'] == contig_id]
@@ -142,91 +145,57 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
             family_color = CRASSVIRALES_COLOR_SCHEME.get(family)
             phylum_color = BACTERIAL_PHYLUM_COLORS.get(host_phylum)
 
-            if family_color:
-                nstyle = NodeStyle()
-                nstyle["fgcolor"] = family_color  # Text or circle color
-                nstyle["hz_line_color"] = family_color  # Horizontal branch line
-                nstyle["vt_line_color"] = family_color  # Vertical branch line
-                nstyle["hz_line_width"] = 4  # Optional: line thickness
-                nstyle["vt_line_width"] = 4
-                nstyle["size"] = 6  # Leaf node circle size
-                leaf.set_style(nstyle)
-            else:
-                # Optional: Set default black color for unknowns
-                nstyle = NodeStyle()
-                nstyle["hz_line_color"] = "black"
-                nstyle["vt_line_color"] = "black"
-                nstyle["hz_line_width"] = 4  # <- Add this
-                nstyle["vt_line_width"] = 4  # <- And this
-                nstyle["size"] = 6
-                leaf.set_style(nstyle)
+            nstyle = NodeStyle()
+            nstyle["hz_line_color"] = family_color or "black"
+            nstyle["vt_line_color"] = family_color or "black"
+            nstyle["hz_line_width"] = BRANCH_THICKNESS
+            nstyle["vt_line_width"] = BRANCH_THICKNESS
+            nstyle["size"] = NODE_SIZE
+            leaf.set_style(nstyle)
 
-        # ✅ Set family as a node feature for internal propagation
         leaf.add_features(family=family)
 
-        # === Always add all columns, even if values are missing ===
-        family_box = RectFace(ANNOTATION_SIZE, ANNOTATION_SIZE, family_color,
-                              family_color) if family_color else RectFace(ANNOTATION_SIZE, ANNOTATION_SIZE, "black",
-                                                                          "white")
-        phylum_box = RectFace(ANNOTATION_SIZE, ANNOTATION_SIZE, phylum_color,
-                              phylum_color) if phylum_color else RectFace(ANNOTATION_SIZE, ANNOTATION_SIZE, "black",
-                                                                          "white")
-        spacer = RectFace(ANNOTATION_SIZE, ANNOTATION_SIZE, fgcolor="white", bgcolor="white")
+        family_box = RectFace(annotation_size, annotation_size, family_color or "black", family_color or "white")
+        phylum_box = RectFace(annotation_size, annotation_size, phylum_color or "black", phylum_color or "white")
+        spacer = RectFace(annotation_size, annotation_size, fgcolor="white", bgcolor="white")
 
-        # Add color boxes and spacer
         leaf.add_face(family_box, column=0, position="aligned")
         leaf.add_face(spacer, column=1, position="aligned")
         leaf.add_face(phylum_box, column=2, position="aligned")
 
-        # Add label faces only if show_labels is True
         barplot_column = 3
         if show_labels:
-            label1 = TextFace(f"Family: {family}", fsize=ANNOTATION_SIZE, fgcolor=family_color or "black")
-            label2 = TextFace(f"Host Phylum: {host_phylum}", fsize=ANNOTATION_SIZE, fgcolor=phylum_color or "black")
-            label3 = TextFace(f"Contig: {contig_id}", fsize=ANNOTATION_SIZE)
-
-            leaf.add_face(label1, column=3, position="aligned")
-            leaf.add_face(label2, column=4, position="aligned")
-            leaf.add_face(label3, column=5, position="aligned")
-
-            # ✅ Add spacer between text and barplot
-            spacer2 = RectFace(ANNOTATION_SIZE, ANNOTATION_SIZE, fgcolor="white", bgcolor="white")
+            leaf.add_face(TextFace(f"Family: {family}", fsize=annotation_size, fgcolor=family_color or "black"), column=3, position="aligned")
+            leaf.add_face(TextFace(f"Host Phylum: {host_phylum}", fsize=annotation_size, fgcolor=phylum_color or "black"), column=4, position="aligned")
+            leaf.add_face(TextFace(f"Contig: {contig_id}", fsize=annotation_size), column=5, position="aligned")
+            spacer2 = RectFace(annotation_size, annotation_size, fgcolor="white", bgcolor="white")
             leaf.add_face(spacer2, column=6, position="aligned")
             barplot_column = 7
         else:
-            # ✅ Even when no labels, add spacer between color boxes and barplot
-            spacer2 = RectFace(ANNOTATION_SIZE, ANNOTATION_SIZE, fgcolor="white", bgcolor="white")
+            spacer2 = RectFace(annotation_size, annotation_size, fgcolor="white", bgcolor="white")
             leaf.add_face(spacer2, column=3, position="aligned")
             barplot_column = 4
 
-        # Add barplot or blank face
         if contig_id in genome_data:
             genome_row = genome_data[contig_id]
             values = [genome_row.get(k, 0) for k in BAR_KEYS]
             colors = [BAR_COLORS[k] for k in BAR_KEYS]
-            # bar_face = faces.BarChartFace(values, width=5 * ANNOTATION_SIZE, height=int(ANNOTATION_SIZE * 0.8),
-            #                               colors=colors)
-            # bar_face = create_stacked_bar_face(values, colors, width=5 * ANNOTATION_SIZE,
-            #                                    height=int(ANNOTATION_SIZE * 0.8))
             bar_face = create_stacked_bar_face_scaled(values, colors, max_total=max_total,
-                                                      max_width=5 * ANNOTATION_SIZE,
-                                                      height=ANNOTATION_SIZE)
+                                                      max_width=200 * annotation_size,
+                                                      height=annotation_size)
         else:
-            bar_face = empty_face(width=5 * ANNOTATION_SIZE, height=ANNOTATION_SIZE)
+            bar_face = empty_face(width=5 * annotation_size, height=annotation_size)
 
         leaf.add_face(bar_face, column=barplot_column, position="aligned")
 
-    # === Propagate family colors to internal nodes ===
     for node in tree.traverse("postorder"):
         if node.is_leaf():
-            node.add_features(family=node.family)  # Already set earlier implicitly
+            node.add_features(family=node.family)
         else:
-            child_families = [child.family for child in node.children if
-                              hasattr(child, "family") and child.family != "unknown"]
+            child_families = [child.family for child in node.children if hasattr(child, "family") and child.family != "unknown"]
             if child_families:
                 most_common = max(set(child_families), key=child_families.count)
                 node.add_features(family=most_common)
-
                 family_color = CRASSVIRALES_COLOR_SCHEME.get(most_common)
                 if family_color:
                     nstyle = NodeStyle()
@@ -234,31 +203,33 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
                     nstyle["vt_line_color"] = family_color
                     nstyle["hz_line_width"] = 10
                     nstyle["vt_line_width"] = 10
-                    nstyle["size"] = 0  # No circle for internal nodes
+                    nstyle["size"] = 0
                     node.set_style(nstyle)
 
 
 # === Render Function ===
-def render_tree(tree: Tree, output_file_prefix: str, show_labels: bool = False):
+def render_tree(tree: Tree, output_file_prefix: str, show_labels: bool = False, max_total: int = 1, annotations: pd.DataFrame = None, genome_data: dict = None):
     def build_tree_style(mode: str) -> TreeStyle:
+        local_annotation_size = int(ANNOTATION_SIZE * 1) if mode == "c" else ANNOTATION_SIZE
+
+        annotate_tree_leaves(tree, annotations, genome_data, max_total, show_labels, annotation_size=local_annotation_size)
+
         ts = TreeStyle()
-        ts.mode = mode  # 'r' = rectangular, 'c' = circular
+        ts.mode = mode
         ts.show_leaf_name = show_labels
         ts.show_branch_length = False
         ts.show_branch_support = False
 
         def add_section_title(title: str):
-            title_face = TextFace(f"— {title} —", fsize=ANNOTATION_SIZE, fstyle='italic')
+            title_face = TextFace(f"— {title} —", fsize=local_annotation_size, fstyle='italic')
             ts.legend.add_face(title_face, column=0)
 
         def add_color_text_entry(label: str, color: str):
-            # Create a colored block + label (Unicode square fallback using ▉)
-            block = TextFace("▉", fsize=ANNOTATION_SIZE, fgcolor=color)
-            text = TextFace(f" {label}", fsize=ANNOTATION_SIZE)
+            block = TextFace("▉", fsize=local_annotation_size, fgcolor=color)
+            text = TextFace(f" {label}", fsize=local_annotation_size)
             ts.legend.add_face(block, column=0)
             ts.legend.add_face(text, column=1)
 
-        # === Host Phyla Legend ===
         add_section_title("Host Phyla")
         for label, color in [
             ("Bacteroidetes", BAR_COLORS['num_Bacteroidetes']),
@@ -270,21 +241,15 @@ def render_tree(tree: Tree, output_file_prefix: str, show_labels: bool = False):
         ]:
             add_color_text_entry(label, color)
 
-        # === Crassvirales Families Legend ===
         add_section_title("Crassvirales Families")
         for family, color in CRASSVIRALES_COLOR_SCHEME.items():
             add_color_text_entry(family, color)
 
-        ts.legend_position = 1  # Top-right
+        ts.legend_position = 1
         return ts
 
-    # === Rectangular version
-    ts_rect = build_tree_style("r")
-    tree.render(f"{output_file_prefix}_rectangular.svg", w=1800, units="px", tree_style=ts_rect)
-
-    # === Circular version
-    ts_circ = build_tree_style("c")
-    tree.render(f"{output_file_prefix}_circular.svg", w=1800, units="px", tree_style=ts_circ)
+    tree.render(f"{output_file_prefix}_rectangular.svg", w=1800, units="px", tree_style=build_tree_style("r"))
+    tree.render(f"{output_file_prefix}_circular.svg", w=2500, units="px", tree_style=build_tree_style("c"))
 
 
 # === Main Entry Point ===
@@ -311,7 +276,8 @@ if __name__ == "__main__":
     max_total = max(sum(row.get(k, 0) for k in BAR_KEYS) for row in genome_data.values())
 
     # annotate_tree_leaves(tree, annotations, genome_data, show_labels=False) # show annotation text line or not
-    annotate_tree_leaves(tree, annotations, genome_data, max_total, show_labels=False)
-    render_tree(tree, output_prefix, show_labels=False) # show gene leave labels or not
-
+    # annotate_tree_leaves(tree, annotations, genome_data, max_total, show_labels=False)
+    # render_tree(tree, output_prefix, show_labels=False) # show gene leave labels or not
+    render_tree(tree, output_prefix, show_labels=False, max_total=max_total, annotations=annotations,
+                genome_data=genome_data)
     print(f"✅ Annotated tree saved to {output_prefix}")
