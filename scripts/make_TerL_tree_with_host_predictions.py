@@ -155,9 +155,12 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
 
         leaf.add_features(family=family)
 
-        family_box = RectFace(annotation_size, annotation_size, family_color or "black", family_color or "white")
-        phylum_box = RectFace(annotation_size, annotation_size, phylum_color or "black", phylum_color or "white")
-        spacer = RectFace(annotation_size, annotation_size, fgcolor="white", bgcolor="white")
+        box_width = 50 * annotation_size  # 50× wider than before
+        box_height = annotation_size
+
+        family_box = RectFace(box_width, box_height, family_color or "black", family_color or "white")
+        phylum_box = RectFace(box_width, box_height, phylum_color or "black", phylum_color or "white")
+        spacer = RectFace(box_width, box_height, fgcolor="white", bgcolor="white")
 
         leaf.add_face(family_box, column=0, position="aligned")
         leaf.add_face(spacer, column=1, position="aligned")
@@ -173,8 +176,10 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
             barplot_column = 7
         else:
             spacer2 = RectFace(annotation_size, annotation_size, fgcolor="white", bgcolor="white")
+            spacer3 = RectFace(50 * annotation_size, annotation_size, fgcolor="white", bgcolor="white")
             leaf.add_face(spacer2, column=3, position="aligned")
-            barplot_column = 4
+            leaf.add_face(spacer3, column=4, position="aligned")
+            barplot_column = 5
 
         if contig_id in genome_data:
             genome_row = genome_data[contig_id]
