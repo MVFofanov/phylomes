@@ -147,8 +147,8 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
                 nstyle["fgcolor"] = family_color  # Text or circle color
                 nstyle["hz_line_color"] = family_color  # Horizontal branch line
                 nstyle["vt_line_color"] = family_color  # Vertical branch line
-                nstyle["hz_line_width"] = 2  # Optional: line thickness
-                nstyle["vt_line_width"] = 2
+                nstyle["hz_line_width"] = 4  # Optional: line thickness
+                nstyle["vt_line_width"] = 4
                 nstyle["size"] = 6  # Leaf node circle size
                 leaf.set_style(nstyle)
             else:
@@ -156,6 +156,8 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
                 nstyle = NodeStyle()
                 nstyle["hz_line_color"] = "black"
                 nstyle["vt_line_color"] = "black"
+                nstyle["hz_line_width"] = 4  # <- Add this
+                nstyle["vt_line_width"] = 4  # <- And this
                 nstyle["size"] = 6
                 leaf.set_style(nstyle)
 
@@ -230,8 +232,8 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
                     nstyle = NodeStyle()
                     nstyle["hz_line_color"] = family_color
                     nstyle["vt_line_color"] = family_color
-                    nstyle["hz_line_width"] = 2
-                    nstyle["vt_line_width"] = 2
+                    nstyle["hz_line_width"] = 10
+                    nstyle["vt_line_width"] = 10
                     nstyle["size"] = 0  # No circle for internal nodes
                     node.set_style(nstyle)
 
@@ -245,20 +247,33 @@ def render_tree(tree: Tree, output_file_prefix: str, show_labels: bool = False):
         ts.show_branch_length = False
         ts.show_branch_support = False
 
-        legend_items = [
+        def add_section_title(title: str):
+            title_face = TextFace(f"— {title} —", fsize=ANNOTATION_SIZE, fstyle='italic')
+            ts.legend.add_face(title_face, column=0)
+
+        def add_color_text_entry(label: str, color: str):
+            # Create a colored block + label (Unicode square fallback using ▉)
+            block = TextFace("▉", fsize=ANNOTATION_SIZE, fgcolor=color)
+            text = TextFace(f" {label}", fsize=ANNOTATION_SIZE)
+            ts.legend.add_face(block, column=0)
+            ts.legend.add_face(text, column=1)
+
+        # === Host Phyla Legend ===
+        add_section_title("Host Phyla")
+        for label, color in [
             ("Bacteroidetes", BAR_COLORS['num_Bacteroidetes']),
             ("Bacillota", BAR_COLORS['num_Bacillota']),
             ("Proteobacteria", BAR_COLORS['num_Proteobacteria']),
             ("Actinobacteria", BAR_COLORS['num_Actinobacteria']),
             ("Other", BAR_COLORS['num_Other']),
             ("Unknown", BAR_COLORS['num_unknown']),
-        ]
+        ]:
+            add_color_text_entry(label, color)
 
-        for label, color in legend_items:
-            box = RectFace(width=ANNOTATION_SIZE, height=ANNOTATION_SIZE, fgcolor=color, bgcolor=color)
-            text = TextFace(f" {label}", fsize=ANNOTATION_SIZE)
-            ts.legend.add_face(box, column=0)
-            ts.legend.add_face(text, column=1)
+        # === Crassvirales Families Legend ===
+        add_section_title("Crassvirales Families")
+        for family, color in CRASSVIRALES_COLOR_SCHEME.items():
+            add_color_text_entry(family, color)
 
         ts.legend_position = 1  # Top-right
         return ts
