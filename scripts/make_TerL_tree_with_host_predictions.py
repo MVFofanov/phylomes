@@ -86,43 +86,51 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
 
         # === Always add all columns, even if values are missing ===
         family_box = RectFace(ANNOTATION_SIZE, ANNOTATION_SIZE, family_color,
-                              family_color) if family_color else RectFace(ANNOTATION_SIZE, ANNOTATION_SIZE, "black", "white")
+                              family_color) if family_color else RectFace(ANNOTATION_SIZE, ANNOTATION_SIZE, "black",
+                                                                          "white")
         phylum_box = RectFace(ANNOTATION_SIZE, ANNOTATION_SIZE, phylum_color,
-                              phylum_color) if phylum_color else RectFace(ANNOTATION_SIZE, ANNOTATION_SIZE, "black", "white")
-
+                              phylum_color) if phylum_color else RectFace(ANNOTATION_SIZE, ANNOTATION_SIZE, "black",
+                                                                          "white")
         spacer = RectFace(ANNOTATION_SIZE, ANNOTATION_SIZE, fgcolor="white", bgcolor="white")
 
-        if show_labels:
-            label1 = TextFace(f"Family: {family}", fsize=ANNOTATION_SIZE, fgcolor=family_color or "black")
-            label2 = TextFace(f"Host Phylum: {host_phylum}", fsize=ANNOTATION_SIZE, fgcolor=phylum_color or "black")
-            label3 = TextFace(f"Contig: {contig_id}", fsize=ANNOTATION_SIZE)
-        else:
-            label1 = empty_text_face()
-            label2 = empty_text_face()
-            label3 = empty_text_face()
-
+        # Add color boxes and spacer
         leaf.add_face(family_box, column=0, position="aligned")
         leaf.add_face(spacer, column=1, position="aligned")
         leaf.add_face(phylum_box, column=2, position="aligned")
 
-        leaf.add_face(label1, column=3, position="aligned")
-        leaf.add_face(label2, column=4, position="aligned")
-        leaf.add_face(label3, column=5, position="aligned")
+        # Add label faces only if show_labels is True
+        barplot_column = 3
+        if show_labels:
+            label1 = TextFace(f"Family: {family}", fsize=ANNOTATION_SIZE, fgcolor=family_color or "black")
+            label2 = TextFace(f"Host Phylum: {host_phylum}", fsize=ANNOTATION_SIZE, fgcolor=phylum_color or "black")
+            label3 = TextFace(f"Contig: {contig_id}", fsize=ANNOTATION_SIZE)
 
+            leaf.add_face(label1, column=3, position="aligned")
+            leaf.add_face(label2, column=4, position="aligned")
+            leaf.add_face(label3, column=5, position="aligned")
+
+            # ✅ Add spacer between text and barplot
+            spacer2 = RectFace(ANNOTATION_SIZE, ANNOTATION_SIZE, fgcolor="white", bgcolor="white")
+            leaf.add_face(spacer2, column=6, position="aligned")
+            barplot_column = 7
+        else:
+            # ✅ Even when no labels, add spacer between color boxes and barplot
+            spacer2 = RectFace(ANNOTATION_SIZE, ANNOTATION_SIZE, fgcolor="white", bgcolor="white")
+            leaf.add_face(spacer2, column=3, position="aligned")
+            barplot_column = 4
+
+        # Add barplot or blank face
         if contig_id in genome_data:
             genome_row = genome_data[contig_id]
             values = [genome_row.get(k, 0) for k in BAR_KEYS]
             colors = [BAR_COLORS[k] for k in BAR_KEYS]
-            bar_face = faces.BarChartFace(
-                values,
-                width=5 * ANNOTATION_SIZE,
-                height=int(ANNOTATION_SIZE * 0.8),
-                colors=colors
-            )
+            bar_face = faces.BarChartFace(values, width=5 * ANNOTATION_SIZE, height=int(ANNOTATION_SIZE * 0.8),
+                                          colors=colors)
         else:
             bar_face = empty_face(width=5 * ANNOTATION_SIZE, height=int(ANNOTATION_SIZE * 0.8))
 
-        leaf.add_face(bar_face, column=6, position="aligned")
+        leaf.add_face(bar_face, column=barplot_column, position="aligned")
+
 
 # === Render Function ===
 def render_tree(tree: Tree, output_file_prefix: str, show_labels: bool = False):
