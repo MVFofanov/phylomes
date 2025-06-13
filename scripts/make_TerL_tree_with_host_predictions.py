@@ -208,9 +208,9 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
             #                                    height=int(ANNOTATION_SIZE * 0.8))
             bar_face = create_stacked_bar_face_scaled(values, colors, max_total=max_total,
                                                       max_width=5 * ANNOTATION_SIZE,
-                                                      height=int(ANNOTATION_SIZE * 0.8))
+                                                      height=ANNOTATION_SIZE)
         else:
-            bar_face = empty_face(width=5 * ANNOTATION_SIZE, height=int(ANNOTATION_SIZE * 0.8))
+            bar_face = empty_face(width=5 * ANNOTATION_SIZE, height=ANNOTATION_SIZE)
 
         leaf.add_face(bar_face, column=barplot_column, position="aligned")
 
