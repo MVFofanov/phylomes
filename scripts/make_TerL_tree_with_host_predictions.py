@@ -75,45 +75,41 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
             family_color = CRASSVIRALES_COLOR_SCHEME.get(family)
             phylum_color = BACTERIAL_PHYLUM_COLORS.get(host_phylum)
 
-            # Node style if family has color
             if family_color:
                 nstyle = NodeStyle()
                 nstyle["fgcolor"] = family_color
                 nstyle["size"] = 6
                 leaf.set_style(nstyle)
 
-        # Column 0: Crassvirales color box
-        # === Add family and phylum color boxes immediately after leaf name ===
-        leaf.add_face(TextFace("  "), column=0, position="branch-right")  # spacing from leaf name
-        family_box = RectFace(10, 10, family_color, family_color) if family_color else RectFace(10, 10, "black",
-                                                                                                "white")
-        leaf.add_face(family_box, column=1, position="branch-right")
-
-        leaf.add_face(TextFace("  "), column=2, position="branch-right")  # spacing between boxes
+        # === Always add all columns, even if values are missing ===
+        family_box = RectFace(10, 10, family_color, family_color) if family_color else RectFace(10, 10, "black", "white")
         phylum_box = RectFace(10, 10, phylum_color, phylum_color) if phylum_color else RectFace(10, 10, "black", "white")
-        leaf.add_face(phylum_box, column=3, position="branch-right")
 
-        leaf.add_face(TextFace("   "), column=4, position="branch-right")  # spacing before aligned faces
+        leaf.add_face(family_box, column=0, position="aligned")
+        leaf.add_face(phylum_box, column=1, position="aligned")
 
-        # === Remaining info (aligned for layout)
         if show_labels:
-            leaf.add_face(TextFace(f"Family: {family}", fsize=10, fgcolor=family_color or "black"), column=5,
-                          position="aligned")
-            leaf.add_face(TextFace(f"Host Phylum: {host_phylum}", fsize=10, fgcolor=phylum_color or "black"), column=6,
-                          position="aligned")
-            leaf.add_face(TextFace(f"Contig: {contig_id}", fsize=10), column=7, position="aligned")
+            label1 = TextFace(f"Family: {family}", fsize=10, fgcolor=family_color or "black")
+            label2 = TextFace(f"Host Phylum: {host_phylum}", fsize=10, fgcolor=phylum_color or "black")
+            label3 = TextFace(f"Contig: {contig_id}", fsize=10)
+        else:
+            label1 = empty_text_face(15)
+            label2 = empty_text_face(15)
+            label3 = empty_text_face(15)
+
+        leaf.add_face(label1, column=2, position="aligned")
+        leaf.add_face(label2, column=3, position="aligned")
+        leaf.add_face(label3, column=4, position="aligned")
 
         if contig_id in genome_data:
             genome_row = genome_data[contig_id]
             values = [genome_row.get(k, 0) for k in BAR_KEYS]
             colors = [BAR_COLORS[k] for k in BAR_KEYS]
             bar_face = faces.BarChartFace(values, width=100, height=20, colors=colors)
-            leaf.add_face(bar_face, column=8, position="aligned")
         else:
-            leaf.add_face(empty_face(width=100), column=8, position="aligned")
+            bar_face = empty_face(width=100, height=20)
 
-        # DEBUG: check that all aligned columns are used
-        # print(f"{leaf.name} → aligned cols: 0 to 5 added ✔")
+        leaf.add_face(bar_face, column=5, position="aligned")
 
 # === Render Function ===
 def render_tree(tree: Tree, output_file: str, show_labels: bool = False):
@@ -163,7 +159,7 @@ if __name__ == "__main__":
 
     #show_labels = False  # or True, depending on your needs
 
-    annotate_tree_leaves(tree, annotations, genome_data, show_labels=True) # show annotation text line or not
+    annotate_tree_leaves(tree, annotations, genome_data, show_labels=False) # show annotation text line or not
     render_tree(tree, output_svg, show_labels=False) # show gene leave labels or not
 
     print(f"✅ Annotated tree saved to {output_svg}")
