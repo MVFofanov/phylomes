@@ -89,8 +89,43 @@ def create_stacked_bar_face(values: list, colors: list, width: int = 100, height
 
     return faces.ImgFace(tmp.name)
 
+
+def create_stacked_bar_face_scaled(values: list, colors: list, max_total: int, max_width: int = 100, height: int = 20) -> faces.ImgFace:
+    """
+    Create a stacked barplot where total width is scaled to the number of proteins.
+    :param values: list of protein counts per phylum
+    :param colors: list of colors for each phylum
+    :param max_total: maximum total across all genomes (for width normalization)
+    :param max_width: maximum width in pixels for the most abundant genome
+    """
+    total = sum(values)
+    if total == 0:
+        total = 1  # Prevent division by zero
+
+    # Scale width by total number of proteins (linear scaling)
+    width = int((total / max_total) * max_width)
+    if width < 1:
+        width = 1  # Prevent zero-width images
+
+    normalized = [v / total for v in values]
+
+    fig, ax = plt.subplots(figsize=(width / 100, height / 100), dpi=100)
+    left = 0
+    for frac, color in zip(normalized, colors):
+        ax.barh(0, width=frac, height=1, left=left, color=color, edgecolor='none')
+        left += frac
+
+    ax.axis('off')
+    plt.tight_layout(pad=0)
+
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+    fig.savefig(tmp.name, format='png', bbox_inches='tight', pad_inches=0, transparent=True)
+    plt.close(fig)
+
+    return faces.ImgFace(tmp.name)
+
 # === Main Leaf Annotation Function ===
-def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dict, show_labels: bool):
+def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dict, max_total: int, show_labels: bool):
     for leaf in tree.iter_leaves():
         contig_id = extract_contig_id(leaf.name)
         row = annotations[annotations['contig_id'] == contig_id]
@@ -169,8 +204,11 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
             colors = [BAR_COLORS[k] for k in BAR_KEYS]
             # bar_face = faces.BarChartFace(values, width=5 * ANNOTATION_SIZE, height=int(ANNOTATION_SIZE * 0.8),
             #                               colors=colors)
-            bar_face = create_stacked_bar_face(values, colors, width=5 * ANNOTATION_SIZE,
-                                               height=int(ANNOTATION_SIZE * 0.8))
+            # bar_face = create_stacked_bar_face(values, colors, width=5 * ANNOTATION_SIZE,
+            #                                    height=int(ANNOTATION_SIZE * 0.8))
+            bar_face = create_stacked_bar_face_scaled(values, colors, max_total=max_total,
+                                                      max_width=5 * ANNOTATION_SIZE,
+                                                      height=int(ANNOTATION_SIZE * 0.8))
         else:
             bar_face = empty_face(width=5 * ANNOTATION_SIZE, height=int(ANNOTATION_SIZE * 0.8))
 
@@ -255,7 +293,10 @@ if __name__ == "__main__":
 
     #show_labels = False  # or True, depending on your needs
 
-    annotate_tree_leaves(tree, annotations, genome_data, show_labels=False) # show annotation text line or not
+    max_total = max(sum(row.get(k, 0) for k in BAR_KEYS) for row in genome_data.values())
+
+    # annotate_tree_leaves(tree, annotations, genome_data, show_labels=False) # show annotation text line or not
+    annotate_tree_leaves(tree, annotations, genome_data, max_total, show_labels=False)
     render_tree(tree, output_prefix, show_labels=False) # show gene leave labels or not
 
     print(f"✅ Annotated tree saved to {output_prefix}")
