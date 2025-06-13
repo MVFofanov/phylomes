@@ -88,12 +88,15 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
                 nstyle["size"] = 6  # Leaf node circle size
                 leaf.set_style(nstyle)
             else:
-                # Optional: Set default gray color for unknowns
+                # Optional: Set default black color for unknowns
                 nstyle = NodeStyle()
-                nstyle["hz_line_color"] = "#CCCCCC"
-                nstyle["vt_line_color"] = "#CCCCCC"
+                nstyle["hz_line_color"] = "black"
+                nstyle["vt_line_color"] = "black"
                 nstyle["size"] = 6
                 leaf.set_style(nstyle)
+
+        # ✅ Set family as a node feature for internal propagation
+        leaf.add_features(family=family)
 
         # === Always add all columns, even if values are missing ===
         family_box = RectFace(ANNOTATION_SIZE, ANNOTATION_SIZE, family_color,
@@ -141,6 +144,27 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
             bar_face = empty_face(width=5 * ANNOTATION_SIZE, height=int(ANNOTATION_SIZE * 0.8))
 
         leaf.add_face(bar_face, column=barplot_column, position="aligned")
+
+    # === Propagate family colors to internal nodes ===
+    for node in tree.traverse("postorder"):
+        if node.is_leaf():
+            node.add_features(family=node.family)  # Already set earlier implicitly
+        else:
+            child_families = [child.family for child in node.children if
+                              hasattr(child, "family") and child.family != "unknown"]
+            if child_families:
+                most_common = max(set(child_families), key=child_families.count)
+                node.add_features(family=most_common)
+
+                family_color = CRASSVIRALES_COLOR_SCHEME.get(most_common)
+                if family_color:
+                    nstyle = NodeStyle()
+                    nstyle["hz_line_color"] = family_color
+                    nstyle["vt_line_color"] = family_color
+                    nstyle["hz_line_width"] = 2
+                    nstyle["vt_line_width"] = 2
+                    nstyle["size"] = 0  # No circle for internal nodes
+                    node.set_style(nstyle)
 
 
 # === Render Function ===
