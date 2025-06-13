@@ -2,6 +2,11 @@ import os
 from ete3 import Tree, TreeStyle, NodeStyle, TextFace, RectFace, faces
 import matplotlib
 import pandas as pd
+import tempfile
+
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+import io
 
 matplotlib.use('Agg')
 os.environ["QT_QPA_PLATFORM"] = "offscreen"  # Ensure Qt offscreen rendering
@@ -59,6 +64,30 @@ def empty_text_face(width=ANNOTATION_SIZE):
 
 def empty_face(width=ANNOTATION_SIZE, height=ANNOTATION_SIZE):
     return RectFace(width=width, height=height, fgcolor="white", bgcolor="white")
+
+def create_stacked_bar_face(values: list, colors: list, width: int = 100, height: int = 20) -> faces.ImgFace:
+    """Create a stacked barplot saved to a temporary PNG file, then return as ImgFace."""
+    total = sum(values)
+    if total == 0:
+        total = 1
+
+    normalized = [v / total for v in values]
+
+    fig, ax = plt.subplots(figsize=(width / 100, height / 100), dpi=100)
+    left = 0
+    for frac, color in zip(normalized, colors):
+        ax.barh(0, width=frac, height=1, left=left, color=color, edgecolor='none')
+        left += frac
+
+    ax.axis('off')
+    plt.tight_layout(pad=0)
+
+    # 🔧 Save to a temp file (ETE3 needs a path, not bytes)
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+    fig.savefig(tmp.name, format='png', bbox_inches='tight', pad_inches=0, transparent=True)
+    plt.close(fig)
+
+    return faces.ImgFace(tmp.name)
 
 # === Main Leaf Annotation Function ===
 def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dict, show_labels: bool):
@@ -138,8 +167,10 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
             genome_row = genome_data[contig_id]
             values = [genome_row.get(k, 0) for k in BAR_KEYS]
             colors = [BAR_COLORS[k] for k in BAR_KEYS]
-            bar_face = faces.BarChartFace(values, width=5 * ANNOTATION_SIZE, height=int(ANNOTATION_SIZE * 0.8),
-                                          colors=colors)
+            # bar_face = faces.BarChartFace(values, width=5 * ANNOTATION_SIZE, height=int(ANNOTATION_SIZE * 0.8),
+            #                               colors=colors)
+            bar_face = create_stacked_bar_face(values, colors, width=5 * ANNOTATION_SIZE,
+                                               height=int(ANNOTATION_SIZE * 0.8))
         else:
             bar_face = empty_face(width=5 * ANNOTATION_SIZE, height=int(ANNOTATION_SIZE * 0.8))
 
