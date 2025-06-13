@@ -80,7 +80,18 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
 
             if family_color:
                 nstyle = NodeStyle()
-                nstyle["fgcolor"] = family_color
+                nstyle["fgcolor"] = family_color  # Text or circle color
+                nstyle["hz_line_color"] = family_color  # Horizontal branch line
+                nstyle["vt_line_color"] = family_color  # Vertical branch line
+                nstyle["hz_line_width"] = 2  # Optional: line thickness
+                nstyle["vt_line_width"] = 2
+                nstyle["size"] = 6  # Leaf node circle size
+                leaf.set_style(nstyle)
+            else:
+                # Optional: Set default gray color for unknowns
+                nstyle = NodeStyle()
+                nstyle["hz_line_color"] = "#CCCCCC"
+                nstyle["vt_line_color"] = "#CCCCCC"
                 nstyle["size"] = 6
                 leaf.set_style(nstyle)
 
