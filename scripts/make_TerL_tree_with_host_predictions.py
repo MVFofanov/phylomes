@@ -3,6 +3,7 @@ from ete3 import Tree, TreeStyle, NodeStyle, TextFace, RectFace, faces
 import matplotlib
 import pandas as pd
 import tempfile
+from typing import Tuple
 
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
@@ -94,6 +95,65 @@ def calculate_clusters_per_subfamily(barplot_path: str, output_path: str) -> pd.
 
     grouped.to_csv(output_path, sep="\t", index=False)
     return grouped
+
+
+def calculate_cluster_summaries(barplot_path: str, out_prefix: str) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    df = pd.read_csv(barplot_path, sep="\t")
+
+    def parse_cluster_list(s):
+        if pd.isna(s):
+            return []
+        return [x.strip() for x in str(s).split(",") if x.strip()]
+
+    def summarize(df_grouped):
+        result = (
+            df_grouped
+            .agg({
+                "crassvirales_genome": lambda x: sorted(set(x)),
+                "cluster_name_uniq": lambda x: sum([parse_cluster_list(i) for i in x], [])
+            })
+            .reset_index()
+        )
+
+        # Basic stats
+        result["crassvirales_genomes_uniq"] = result["crassvirales_genome"].apply(lambda lst: ", ".join(lst))
+        result["number_of_crassvirales_genomes"] = result["crassvirales_genome"].apply(len)
+
+        # Unique cluster stats
+        result["clusters_per_group_uniq"] = result["cluster_name_uniq"].apply(lambda x: ", ".join(sorted(set(x))))
+        result["number_of_clusters_per_group_uniq"] = result["cluster_name_uniq"].apply(lambda x: len(set(x)))
+        result["ratio_of_clusters_per_genome_per_group_uniq"] = result.apply(
+            lambda row: round(row["number_of_clusters_per_group_uniq"] / row["number_of_crassvirales_genomes"], 2),
+            axis=1
+        )
+
+        # All cluster stats (non-unique)
+        result["clusters_per_group_all"] = result["cluster_name_uniq"].apply(lambda x: ", ".join(x))
+        result["number_of_clusters_per_group_all"] = result["cluster_name_uniq"].apply(len)
+        result["ratio_of_clusters_per_genome_per_group_all"] = result.apply(
+            lambda row: round(row["number_of_clusters_per_group_all"] / row["number_of_crassvirales_genomes"], 2),
+            axis=1
+        )
+
+        result.drop(columns=["crassvirales_genome", "cluster_name_uniq"], inplace=True)
+        return result
+
+    # === Family-level
+    family_df = df[df["family_dani"] != "unknown"]
+    family_summary = summarize(family_df.groupby(["family_dani"]))
+    family_summary.to_csv(f"{out_prefix}_family_summary.tsv", sep="\t", index=False)
+
+    # === Subfamily-level
+    subfamily_df = df[df["subfamily_dani"] != "unknown"]
+    subfamily_summary = summarize(subfamily_df.groupby(["family_dani", "subfamily_dani"]))
+    subfamily_summary.to_csv(f"{out_prefix}_subfamily_summary.tsv", sep="\t", index=False)
+
+    # === Genus-level
+    genus_df = df[df["genus_dani"] != "unknown"]
+    genus_summary = summarize(genus_df.groupby(["family_dani", "subfamily_dani", "genus_dani"]))
+    genus_summary.to_csv(f"{out_prefix}_genus_summary.tsv", sep="\t", index=False)
+
+    return family_summary, subfamily_summary, genus_summary
 
 
 def empty_text_face(width=ANNOTATION_SIZE):
@@ -319,9 +379,14 @@ if __name__ == "__main__":
     # render_tree(tree, output_prefix, show_labels=False) # show gene leave labels or not
 
     # === NEW: Calculate and save cluster summary per subfamily ===
-    cluster_summary_output = os.path.join(output_dir, "subfamily_cluster_summary.tsv")
-    cluster_summary_df = calculate_clusters_per_subfamily(barplot_tsv, cluster_summary_output)
-    print(f"✅ Subfamily cluster summary saved to {cluster_summary_output}")
+    # cluster_summary_output = os.path.join(output_dir, "subfamily_cluster_summary.tsv")
+    # cluster_summary_df = calculate_clusters_per_subfamily(barplot_tsv, cluster_summary_output)
+    # print(f"✅ Subfamily cluster summary saved to {cluster_summary_output}")
+
+    cluster_summary_prefix = os.path.join(output_dir, "cluster_summary")
+    family_summary, subfamily_summary, genus_summary = calculate_cluster_summaries(barplot_tsv, cluster_summary_prefix)
+
+    print("✅ Family-level, subfamily-level, and genus-level summaries saved.")
 
     render_tree(tree, output_prefix, show_labels=False, max_total=max_total, annotations=annotations,
                 genome_data=genome_data)
