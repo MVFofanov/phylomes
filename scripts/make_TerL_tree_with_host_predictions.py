@@ -62,6 +62,40 @@ def load_host_composition_dict(tsv_path: str) -> dict:
     df = df.set_index('crassvirales_genome')
     return df.to_dict(orient='index')
 
+def calculate_clusters_per_subfamily(barplot_path: str, output_path: str) -> pd.DataFrame:
+    df = pd.read_csv(barplot_path, sep="\t")
+    df = df[df["subfamily_dani"] != "unknown"]
+
+    def parse_cluster_list(s):
+        if pd.isna(s):
+            return set()
+        return set(map(str.strip, str(s).split(",")))
+
+    grouped = (
+        df.groupby(["subfamily_dani", "family_dani"])
+        .agg({
+            "crassvirales_genome": lambda x: sorted(set(x)),
+            "cluster_name_uniq": lambda x: set().union(*map(parse_cluster_list, x))
+        })
+        .reset_index()
+    )
+
+    grouped["crassvirales_genomes_uniq"] = grouped["crassvirales_genome"].apply(lambda lst: ", ".join(lst))
+    grouped["number_of_crassvirales_genomes"] = grouped["crassvirales_genome"].apply(len)
+    grouped["number_of_clusters_per_subfamily"] = grouped["cluster_name_uniq"].apply(len)
+    grouped["clusters_per_subfamily"] = grouped["cluster_name_uniq"].apply(lambda s: ", ".join(sorted(s)))
+
+    # ➕ Ratio: clusters per genome (per subfamily)
+    grouped["ratio_of_clusters_per_genome_per_subfamily"] = (
+        grouped["number_of_clusters_per_subfamily"] / grouped["number_of_crassvirales_genomes"]
+    ).round(2)
+
+    grouped = grouped.drop(columns=["crassvirales_genome", "cluster_name_uniq"])
+
+    grouped.to_csv(output_path, sep="\t", index=False)
+    return grouped
+
+
 def empty_text_face(width=ANNOTATION_SIZE):
     return TextFace(" " * width, fsize=ANNOTATION_SIZE)
 
@@ -283,6 +317,12 @@ if __name__ == "__main__":
     # annotate_tree_leaves(tree, annotations, genome_data, show_labels=False) # show annotation text line or not
     # annotate_tree_leaves(tree, annotations, genome_data, max_total, show_labels=False)
     # render_tree(tree, output_prefix, show_labels=False) # show gene leave labels or not
+
+    # === NEW: Calculate and save cluster summary per subfamily ===
+    cluster_summary_output = os.path.join(output_dir, "subfamily_cluster_summary.tsv")
+    cluster_summary_df = calculate_clusters_per_subfamily(barplot_tsv, cluster_summary_output)
+    print(f"✅ Subfamily cluster summary saved to {cluster_summary_output}")
+
     render_tree(tree, output_prefix, show_labels=False, max_total=max_total, annotations=annotations,
                 genome_data=genome_data)
     print(f"✅ Annotated tree saved to {output_prefix}")
