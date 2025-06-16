@@ -212,18 +212,58 @@ def annotate_genomes_with_taxonomy(base_dir: str, thresholds: list, annotation_p
         output_path = os.path.join(base_dir, "host_prediction_with_ratio_phylum_to_Bacteroidetes", str(threshold),
                                    f"genomes_crassvirales_threshold_{threshold}_with_ratio_phylum_to_Bacteroidetes_annotated.tsv")
 
-        if os.path.exists(genome_path):
-            genome_df = pd.read_csv(genome_path, sep='\t')
-            merged = genome_df.merge(
-                taxonomy_df,
-                how='left',
-                left_on="crassvirales_genome",
-                right_on="contig_id"
-            ).drop(columns=["contig_id"])
-            merged.to_csv(output_path, sep='\t', index=False)
-            print(f"✅ Annotated genome table saved to:\n  {output_path}")
-        else:
+        if not os.path.exists(genome_path):
             print(f"⚠️ File not found for threshold {threshold}: {genome_path}")
+            continue
+
+        genome_df = pd.read_csv(genome_path, sep='\t')
+
+        # === Load corresponding protein table for this threshold ===
+        protein_path = os.path.join(base_dir, "host_prediction_with_ratio_phylum_to_Bacteroidetes", str(threshold),
+                                    f"proteins_crassvirales_threshold_{threshold}_with_ratio_phylum_to_Bacteroidetes.tsv")
+
+        if not os.path.exists(protein_path):
+            print(f"⚠️ Missing protein file for threshold {threshold}: {protein_path}")
+            continue
+
+        protein_df = pd.read_csv(protein_path, sep='\t')
+        protein_grouped = protein_df.groupby("crassvirales_genome")
+
+        # === Prepare additional columns per genome ===
+        extra_rows = []
+        for genome in genome_df["crassvirales_genome"]:
+            if genome not in protein_grouped.groups:
+                extra_rows.append({
+                    "crassvirales_genome": genome,
+                    "cluster_name_uniq": "",
+                    "number_of_clusters": 0,
+                    "node_name_uniq": "",
+                    "number_of_nodes": 0,
+                })
+                continue
+
+            group = protein_grouped.get_group(genome)
+
+            cluster_names = sorted(set(group["cluster_name"]))
+            node_names = sorted(set(f"{row['cluster_name']}|{row['node_name']}" for _, row in group.iterrows()))
+
+            extra_rows.append({
+                "crassvirales_genome": genome,
+                "cluster_name_uniq": ", ".join(cluster_names),
+                "number_of_clusters": len(cluster_names),
+                "node_name_uniq": ", ".join(node_names),
+                "number_of_nodes": len(node_names),
+            })
+
+        extra_df = pd.DataFrame(extra_rows)
+
+        # === Merge everything together ===
+        merged = genome_df.merge(extra_df, on="crassvirales_genome", how="left")
+        merged = merged.merge(taxonomy_df, how="left", left_on="crassvirales_genome", right_on="contig_id")
+        merged = merged.drop(columns=["contig_id"])
+
+        merged.to_csv(output_path, sep='\t', index=False)
+        print(f"✅ Annotated genome table saved to:\n  {output_path}")
 
 
 def plot_stacked_bars_by_taxon(
