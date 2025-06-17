@@ -217,7 +217,15 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
             nstyle["size"] = NODE_SIZE
             leaf.set_style(nstyle)
 
-        leaf.add_features(family=family)
+            # leaf.add_features(family=family)
+            subfamily = row.get('subfamily_dani', 'unknown')
+            genus = row.get('genus_dani', 'unknown')
+
+            leaf.add_features(
+                family=family,
+                subfamily=subfamily,
+                genus=genus
+            )
 
         box_width = 50 * annotation_size  # 50× wider than before
         box_height = annotation_size
