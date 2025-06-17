@@ -338,7 +338,7 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
             cluster_bar = create_cluster_bar_face(
                 cluster_count=leaf.number_of_clusters_per_subfamily_uniq,
                 max_cluster_count=max_subfamily_cluster_count,
-                max_width=200 * annotation_size,
+                max_width=500 * annotation_size,
                 height=annotation_size
             )
             leaf.add_face(cluster_bar, column=barplot_column + 1, position="aligned")
@@ -348,7 +348,7 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
             genus_bar = create_genus_cluster_bar_face(
                 cluster_count=leaf.number_of_clusters_per_genus_uniq,
                 max_cluster_count=max_genus_cluster_count,
-                max_width=200 * annotation_size,
+                max_width=500 * annotation_size,
                 height=annotation_size
             )
             leaf.add_face(genus_bar, column=barplot_column + 2, position="aligned")
