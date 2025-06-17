@@ -215,6 +215,30 @@ def create_cluster_bar_face(cluster_count: int, max_cluster_count: int, max_widt
 
     return faces.ImgFace(tmp.name)
 
+
+def create_genus_cluster_bar_face(cluster_count: int, max_cluster_count: int, max_width: int = 500, height: int = 20) -> faces.ImgFace:
+    """
+    Create a horizontal black bar scaled by genus-level cluster count.
+    :param cluster_count: Number of clusters for the genus
+    :param max_cluster_count: Maximum across all genera (for scaling)
+    :param max_width: Max bar width in pixels
+    :param height: Bar height
+    :return: ImgFace to be attached to tree leaf
+    """
+    width = int((cluster_count / max_cluster_count) * max_width)
+    width = max(width, 1)  # prevent invisible bars
+
+    fig, ax = plt.subplots(figsize=(width / 100, height / 100), dpi=100)
+    ax.barh(0, width=width, height=1, color="black")
+    ax.axis('off')
+    plt.tight_layout(pad=0)
+
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+    fig.savefig(tmp.name, format='png', bbox_inches='tight', pad_inches=0, transparent=True)
+    plt.close(fig)
+
+    return faces.ImgFace(tmp.name)
+
 # === Main Leaf Annotation Function ===
 def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dict, max_total: int, show_labels: bool,
                          annotation_size: int, subfamily_summary: pd.DataFrame = None,
@@ -225,6 +249,7 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
                                                  "number_of_clusters_per_group_uniq") if genus_summary is not None else {}
 
     max_subfamily_cluster_count = max([v for v in subfamily_count_map.values()] + [1])  # avoid 0
+    max_genus_cluster_count = max([v for v in genus_count_map.values()] + [1])  # avoid 0
 
     for leaf in tree.iter_leaves():
         contig_id = extract_contig_id(leaf.name)
@@ -313,10 +338,20 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
             cluster_bar = create_cluster_bar_face(
                 cluster_count=leaf.number_of_clusters_per_subfamily_uniq,
                 max_cluster_count=max_subfamily_cluster_count,
-                max_width=500 * annotation_size,
+                max_width=200 * annotation_size,
                 height=annotation_size
             )
             leaf.add_face(cluster_bar, column=barplot_column + 1, position="aligned")
+
+        # 🔳 Add black horizontal bar for genus cluster count
+        if genus != "unknown" and hasattr(leaf, "number_of_clusters_per_genus_uniq"):
+            genus_bar = create_genus_cluster_bar_face(
+                cluster_count=leaf.number_of_clusters_per_genus_uniq,
+                max_cluster_count=max_genus_cluster_count,
+                max_width=200 * annotation_size,
+                height=annotation_size
+            )
+            leaf.add_face(genus_bar, column=barplot_column + 2, position="aligned")
 
     # === Internal node coloring ===
     for node in tree.traverse("postorder"):
