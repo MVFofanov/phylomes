@@ -206,6 +206,13 @@ def annotate_genomes_with_taxonomy(base_dir: str, thresholds: list, annotation_p
     taxonomy_df = taxonomy_df[["contig_id"] + taxonomy_columns]
     taxonomy_df = taxonomy_df.rename(columns={"host_phylum": "host_phylum_iphop"})
 
+    # ✅ Replace ICTV family names with project-specific aliases
+    family_rename_map = {
+        "Tinaiviridae": "Epsilon",
+        "Jelitoviridae": "Zeta"
+    }
+    taxonomy_df["family_dani"] = taxonomy_df["family_dani"].replace(family_rename_map)
+
     for threshold in thresholds:
         genome_path = os.path.join(base_dir, "host_prediction_with_ratio_phylum_to_Bacteroidetes", str(threshold),
                                    f"genomes_crassvirales_threshold_{threshold}_with_ratio_phylum_to_Bacteroidetes.tsv")
