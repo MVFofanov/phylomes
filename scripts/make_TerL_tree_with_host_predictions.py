@@ -199,12 +199,32 @@ def create_stacked_bar_face_scaled(values: list, colors: list, max_total: int, m
 
     return faces.ImgFace(tmp.name)
 
-# === Main Leaf Annotation Function ===
-def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dict, max_total: int, show_labels: bool, annotation_size: int,
-                          subfamily_summary: pd.DataFrame = None, genus_summary: pd.DataFrame = None):
+def create_cluster_bar_face(cluster_count: int, max_cluster_count: int, max_width: int = 500, height: int = 20) -> faces.ImgFace:
+    """Create a horizontal black bar scaled by cluster count."""
+    width = int((cluster_count / max_cluster_count) * max_width)
+    width = max(width, 1)  # prevent zero width
 
-    subfamily_count_map = load_cluster_count_mapping(subfamily_summary, "subfamily", "number_of_clusters_per_group_uniq") if subfamily_summary is not None else {}
-    genus_count_map = load_cluster_count_mapping(genus_summary, "genus", "number_of_clusters_per_group_uniq") if genus_summary is not None else {}
+    fig, ax = plt.subplots(figsize=(width / 100, height / 100), dpi=100)
+    ax.barh(0, width=width, height=1, color="black")
+    ax.axis('off')
+    plt.tight_layout(pad=0)
+
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+    fig.savefig(tmp.name, format='png', bbox_inches='tight', pad_inches=0, transparent=True)
+    plt.close(fig)
+
+    return faces.ImgFace(tmp.name)
+
+# === Main Leaf Annotation Function ===
+def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dict, max_total: int, show_labels: bool,
+                         annotation_size: int, subfamily_summary: pd.DataFrame = None,
+                         genus_summary: pd.DataFrame = None):
+    subfamily_count_map = load_cluster_count_mapping(subfamily_summary, "subfamily",
+                                                     "number_of_clusters_per_group_uniq") if subfamily_summary is not None else {}
+    genus_count_map = load_cluster_count_mapping(genus_summary, "genus",
+                                                 "number_of_clusters_per_group_uniq") if genus_summary is not None else {}
+
+    max_subfamily_cluster_count = max([v for v in subfamily_count_map.values()] + [1])  # avoid 0
 
     for leaf in tree.iter_leaves():
         contig_id = extract_contig_id(leaf.name)
@@ -234,14 +254,10 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
             nstyle["size"] = NODE_SIZE
             leaf.set_style(nstyle)
 
-        # Add feature fields to leaf
-        leaf.add_features(
-            family=family,
-            subfamily=subfamily,
-            genus=genus
-        )
+        # Add feature fields
+        leaf.add_features(family=family, subfamily=subfamily, genus=genus)
 
-        # Optionally attach cluster counts if available
+        # Cluster count features
         subfam_key = (family, subfamily)
         gen_key = (family, subfamily, genus)
 
@@ -250,6 +266,7 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
         if gen_key in genus_count_map:
             leaf.add_features(number_of_clusters_per_genus_uniq=genus_count_map[gen_key])
 
+        # Add boxes
         box_width = 50 * annotation_size
         box_height = annotation_size
 
@@ -263,8 +280,11 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
 
         barplot_column = 3
         if show_labels:
-            leaf.add_face(TextFace(f"Family: {family}", fsize=annotation_size, fgcolor=family_color or "black"), column=3, position="aligned")
-            leaf.add_face(TextFace(f"Host Phylum: {host_phylum}", fsize=annotation_size, fgcolor=phylum_color or "black"), column=4, position="aligned")
+            leaf.add_face(TextFace(f"Family: {family}", fsize=annotation_size, fgcolor=family_color or "black"),
+                          column=3, position="aligned")
+            leaf.add_face(
+                TextFace(f"Host Phylum: {host_phylum}", fsize=annotation_size, fgcolor=phylum_color or "black"),
+                column=4, position="aligned")
             leaf.add_face(TextFace(f"Contig: {contig_id}", fsize=annotation_size), column=5, position="aligned")
             spacer2 = RectFace(annotation_size, annotation_size, fgcolor="white", bgcolor="white")
             leaf.add_face(spacer2, column=6, position="aligned")
@@ -288,11 +308,23 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
 
         leaf.add_face(bar_face, column=barplot_column, position="aligned")
 
+        # 🔳 Add black horizontal bar for subfamily cluster count
+        if subfamily != "unknown" and hasattr(leaf, "number_of_clusters_per_subfamily_uniq"):
+            cluster_bar = create_cluster_bar_face(
+                cluster_count=leaf.number_of_clusters_per_subfamily_uniq,
+                max_cluster_count=max_subfamily_cluster_count,
+                max_width=500 * annotation_size,
+                height=annotation_size
+            )
+            leaf.add_face(cluster_bar, column=barplot_column + 1, position="aligned")
+
+    # === Internal node coloring ===
     for node in tree.traverse("postorder"):
         if node.is_leaf():
             continue
 
-        child_families = [child.family for child in node.children if hasattr(child, "family") and child.family != "unknown"]
+        child_families = [child.family for child in node.children if
+                          hasattr(child, "family") and child.family != "unknown"]
         if child_families:
             most_common = max(set(child_families), key=child_families.count)
             node.add_features(family=most_common)
@@ -312,7 +344,18 @@ def render_tree(tree: Tree, output_file_prefix: str, show_labels: bool = False, 
     def build_tree_style(mode: str) -> TreeStyle:
         local_annotation_size = int(ANNOTATION_SIZE * 1) if mode == "c" else ANNOTATION_SIZE
 
-        annotate_tree_leaves(tree, annotations, genome_data, max_total, show_labels, annotation_size=local_annotation_size)
+        #annotate_tree_leaves(tree, annotations, genome_data, max_total, show_labels, annotation_size=local_annotation_size)
+        annotate_tree_leaves(
+            tree,
+            annotations,
+            genome_data,
+            max_total,
+            show_labels,
+            annotation_size=local_annotation_size,
+            subfamily_summary=subfamily_summary,
+            genus_summary=genus_summary
+        )
+
 
         ts = TreeStyle()
         ts.mode = mode
