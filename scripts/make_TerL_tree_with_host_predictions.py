@@ -63,39 +63,6 @@ def load_host_composition_dict(tsv_path: str) -> dict:
     df = df.set_index('crassvirales_genome')
     return df.to_dict(orient='index')
 
-def calculate_clusters_per_subfamily(barplot_path: str, output_path: str) -> pd.DataFrame:
-    df = pd.read_csv(barplot_path, sep="\t")
-    df = df[df["subfamily_dani"] != "unknown"]
-
-    def parse_cluster_list(s):
-        if pd.isna(s):
-            return set()
-        return set(map(str.strip, str(s).split(",")))
-
-    grouped = (
-        df.groupby(["subfamily_dani", "family_dani"])
-        .agg({
-            "crassvirales_genome": lambda x: sorted(set(x)),
-            "cluster_name_uniq": lambda x: set().union(*map(parse_cluster_list, x))
-        })
-        .reset_index()
-    )
-
-    grouped["crassvirales_genomes_uniq"] = grouped["crassvirales_genome"].apply(lambda lst: ", ".join(lst))
-    grouped["number_of_crassvirales_genomes"] = grouped["crassvirales_genome"].apply(len)
-    grouped["number_of_clusters_per_subfamily"] = grouped["cluster_name_uniq"].apply(len)
-    grouped["clusters_per_subfamily"] = grouped["cluster_name_uniq"].apply(lambda s: ", ".join(sorted(s)))
-
-    # ➕ Ratio: clusters per genome (per subfamily)
-    grouped["ratio_of_clusters_per_genome_per_subfamily"] = (
-        grouped["number_of_clusters_per_subfamily"] / grouped["number_of_crassvirales_genomes"]
-    ).round(2)
-
-    grouped = grouped.drop(columns=["crassvirales_genome", "cluster_name_uniq"])
-
-    grouped.to_csv(output_path, sep="\t", index=False)
-    return grouped
-
 
 def calculate_cluster_summaries(barplot_path: str, out_prefix: str) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     df = pd.read_csv(barplot_path, sep="\t")
@@ -139,17 +106,20 @@ def calculate_cluster_summaries(barplot_path: str, out_prefix: str) -> Tuple[pd.
         return result
 
     # === Family-level
-    family_df = df[df["family_dani"] != "unknown"]
+    #family_df = df[df["family_dani"] != "unknown"]
+    family_df = df
     family_summary = summarize(family_df.groupby(["family_dani"]))
     family_summary.to_csv(f"{out_prefix}_family_summary.tsv", sep="\t", index=False)
 
     # === Subfamily-level
-    subfamily_df = df[df["subfamily_dani"] != "unknown"]
+    #subfamily_df = df[df["subfamily_dani"] != "unknown"]
+    subfamily_df = df
     subfamily_summary = summarize(subfamily_df.groupby(["family_dani", "subfamily_dani"]))
     subfamily_summary.to_csv(f"{out_prefix}_subfamily_summary.tsv", sep="\t", index=False)
 
     # === Genus-level
-    genus_df = df[df["genus_dani"] != "unknown"]
+    # genus_df = df[df["genus_dani"] != "unknown"]
+    genus_df = df
     genus_summary = summarize(genus_df.groupby(["family_dani", "subfamily_dani", "genus_dani"]))
     genus_summary.to_csv(f"{out_prefix}_genus_summary.tsv", sep="\t", index=False)
 
