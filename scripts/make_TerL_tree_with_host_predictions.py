@@ -64,6 +64,14 @@ def load_host_composition_dict(tsv_path: str) -> dict:
     return df.to_dict(orient='index')
 
 
+def load_cluster_count_mapping(summary_df: pd.DataFrame, level: str, count_column: str) -> dict:
+    if level == "subfamily":
+        return {(row['family_dani'], row['subfamily_dani']): row[count_column] for _, row in summary_df.iterrows()}
+    elif level == "genus":
+        return {(row['family_dani'], row['subfamily_dani'], row['genus_dani']): row[count_column] for _, row in summary_df.iterrows()}
+    return {}
+
+
 def calculate_cluster_summaries(barplot_path: str, out_prefix: str) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     df = pd.read_csv(barplot_path, sep="\t")
 
@@ -192,12 +200,19 @@ def create_stacked_bar_face_scaled(values: list, colors: list, max_total: int, m
     return faces.ImgFace(tmp.name)
 
 # === Main Leaf Annotation Function ===
-def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dict, max_total: int, show_labels: bool, annotation_size: int):
+def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dict, max_total: int, show_labels: bool, annotation_size: int,
+                          subfamily_summary: pd.DataFrame = None, genus_summary: pd.DataFrame = None):
+
+    subfamily_count_map = load_cluster_count_mapping(subfamily_summary, "subfamily", "number_of_clusters_per_group_uniq") if subfamily_summary is not None else {}
+    genus_count_map = load_cluster_count_mapping(genus_summary, "genus", "number_of_clusters_per_group_uniq") if genus_summary is not None else {}
+
     for leaf in tree.iter_leaves():
         contig_id = extract_contig_id(leaf.name)
         row = annotations[annotations['contig_id'] == contig_id]
 
         family = "unknown"
+        subfamily = "unknown"
+        genus = "unknown"
         host_phylum = "unknown"
         family_color = None
         phylum_color = None
@@ -205,6 +220,8 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
         if not row.empty:
             row = row.iloc[0]
             family = row.get('family_crassus', 'unknown')
+            subfamily = row.get('subfamily_dani', 'unknown')
+            genus = row.get('genus_dani', 'unknown')
             host_phylum = row.get('host_phylum', 'unknown')
             family_color = CRASSVIRALES_COLOR_SCHEME.get(family)
             phylum_color = BACTERIAL_PHYLUM_COLORS.get(host_phylum)
@@ -217,17 +234,23 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
             nstyle["size"] = NODE_SIZE
             leaf.set_style(nstyle)
 
-            # leaf.add_features(family=family)
-            subfamily = row.get('subfamily_dani', 'unknown')
-            genus = row.get('genus_dani', 'unknown')
+        # Add feature fields to leaf
+        leaf.add_features(
+            family=family,
+            subfamily=subfamily,
+            genus=genus
+        )
 
-            leaf.add_features(
-                family=family,
-                subfamily=subfamily,
-                genus=genus
-            )
+        # Optionally attach cluster counts if available
+        subfam_key = (family, subfamily)
+        gen_key = (family, subfamily, genus)
 
-        box_width = 50 * annotation_size  # 50× wider than before
+        if subfam_key in subfamily_count_map:
+            leaf.add_features(number_of_clusters_per_subfamily_uniq=subfamily_count_map[subfam_key])
+        if gen_key in genus_count_map:
+            leaf.add_features(number_of_clusters_per_genus_uniq=genus_count_map[gen_key])
+
+        box_width = 50 * annotation_size
         box_height = annotation_size
 
         family_box = RectFace(box_width, box_height, family_color or "black", family_color or "white")
@@ -267,21 +290,21 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
 
     for node in tree.traverse("postorder"):
         if node.is_leaf():
-            node.add_features(family=node.family)
-        else:
-            child_families = [child.family for child in node.children if hasattr(child, "family") and child.family != "unknown"]
-            if child_families:
-                most_common = max(set(child_families), key=child_families.count)
-                node.add_features(family=most_common)
-                family_color = CRASSVIRALES_COLOR_SCHEME.get(most_common)
-                if family_color:
-                    nstyle = NodeStyle()
-                    nstyle["hz_line_color"] = family_color
-                    nstyle["vt_line_color"] = family_color
-                    nstyle["hz_line_width"] = 10
-                    nstyle["vt_line_width"] = 10
-                    nstyle["size"] = 0
-                    node.set_style(nstyle)
+            continue
+
+        child_families = [child.family for child in node.children if hasattr(child, "family") and child.family != "unknown"]
+        if child_families:
+            most_common = max(set(child_families), key=child_families.count)
+            node.add_features(family=most_common)
+            family_color = CRASSVIRALES_COLOR_SCHEME.get(most_common)
+            if family_color:
+                nstyle = NodeStyle()
+                nstyle["hz_line_color"] = family_color
+                nstyle["vt_line_color"] = family_color
+                nstyle["hz_line_width"] = 10
+                nstyle["vt_line_width"] = 10
+                nstyle["size"] = 0
+                node.set_style(nstyle)
 
 
 # === Render Function ===
