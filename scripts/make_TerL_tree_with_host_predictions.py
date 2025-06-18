@@ -336,32 +336,50 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
         box_width = 50 * annotation_size
         box_height = annotation_size
 
+        # 1️⃣ Add basic boxes (family, phylum)
         family_box = RectFace(box_width, box_height, family_color or "black", family_color or "white")
         phylum_box = RectFace(box_width, box_height, phylum_color or "black", phylum_color or "white")
         spacer = RectFace(box_width, box_height, fgcolor="white", bgcolor="white")
 
+        # 2️⃣ Add boxes in new order
         leaf.add_face(family_box, column=0, position="aligned")
         leaf.add_face(spacer, column=1, position="aligned")
-        leaf.add_face(phylum_box, column=2, position="aligned")
 
-        barplot_column = 3
-        if show_labels:
-            leaf.add_face(TextFace(f"Family: {family}", fsize=annotation_size, fgcolor=family_color or "black"),
-                          column=3, position="aligned")
-            leaf.add_face(
-                TextFace(f"Host Phylum: {host_phylum}", fsize=annotation_size, fgcolor=phylum_color or "black"),
-                column=4, position="aligned")
-            leaf.add_face(TextFace(f"Contig: {contig_id}", fsize=annotation_size), column=5, position="aligned")
-            spacer2 = RectFace(annotation_size, annotation_size, fgcolor="white", bgcolor="white")
-            leaf.add_face(spacer2, column=6, position="aligned")
-            barplot_column = 7
-        else:
-            spacer2 = RectFace(annotation_size, annotation_size, fgcolor="white", bgcolor="white")
-            spacer3 = RectFace(50 * annotation_size, annotation_size, fgcolor="white", bgcolor="white")
-            leaf.add_face(spacer2, column=3, position="aligned")
-            leaf.add_face(spacer3, column=4, position="aligned")
-            barplot_column = 5
+        # Optional placeholders if bars are missing
+        subfamily_bar_face = empty_face(width=5 * annotation_size, height=annotation_size)
+        genus_bar_face = empty_face(width=5 * annotation_size, height=annotation_size)
 
+        if subfamily != "unknown" and hasattr(leaf, "number_of_clusters_per_subfamily_uniq"):
+            subfamily_color = SUBFAMILY_COLOR_MAP.get(subfamily, "gray")
+            subfamily_bar_face = create_subfamily_cluster_bar_face(
+                cluster_count=leaf.number_of_clusters_per_subfamily_uniq,
+                max_cluster_count=max_subfamily_cluster_count,
+                max_width=500 * annotation_size,
+                height=annotation_size,
+                color=subfamily_color
+            )
+
+        if genus != "unknown" and hasattr(leaf, "number_of_clusters_per_genus_uniq"):
+            if genus not in genus_color_map:
+                genus_color_map[genus] = GENUS_ALTERNATING_COLORS[current_index % len(GENUS_ALTERNATING_COLORS)]
+                current_index += 1
+            genus_color = genus_color_map.get(genus, "gray")
+            genus_bar_face = create_genus_cluster_bar_face(
+                cluster_count=leaf.number_of_clusters_per_genus_uniq,
+                max_cluster_count=max_genus_cluster_count,
+                max_width=500 * annotation_size,
+                height=annotation_size,
+                color=genus_color
+            )
+
+        leaf.add_face(subfamily_bar_face, column=2, position="aligned")
+        leaf.add_face(spacer, column=3, position="aligned")
+        leaf.add_face(genus_bar_face, column=4, position="aligned")
+        leaf.add_face(spacer, column=5, position="aligned")
+        leaf.add_face(phylum_box, column=6, position="aligned")
+        leaf.add_face(spacer, column=7, position="aligned")
+
+        # 3️⃣ Stacked barplot (host phyla)
         if contig_id in genome_data:
             genome_row = genome_data[contig_id]
             values = [genome_row.get(k, 0) for k in BAR_KEYS]
@@ -372,38 +390,7 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
         else:
             bar_face = empty_face(width=5 * annotation_size, height=annotation_size)
 
-        leaf.add_face(bar_face, column=barplot_column, position="aligned")
-
-        # 🔳 Add black horizontal bar for subfamily cluster count
-        if subfamily != "unknown" and hasattr(leaf, "number_of_clusters_per_subfamily_uniq"):
-            subfamily_color = SUBFAMILY_COLOR_MAP.get(subfamily, "gray")
-            # print(f'{subfamily_color=}')
-
-            cluster_bar = create_subfamily_cluster_bar_face(
-                cluster_count=leaf.number_of_clusters_per_subfamily_uniq,
-                max_cluster_count=max_subfamily_cluster_count,
-                max_width=500 * annotation_size,
-                height=annotation_size,
-                color=subfamily_color
-            )
-            leaf.add_face(cluster_bar, column=barplot_column + 1, position="aligned")
-
-        # 🔳 Add black horizontal bar for genus cluster count
-        if genus != "unknown" and hasattr(leaf, "number_of_clusters_per_genus_uniq"):
-            if genus not in genus_color_map:
-                genus_color_map[genus] = GENUS_ALTERNATING_COLORS[current_index % len(GENUS_ALTERNATING_COLORS)]
-                current_index += 1
-
-            genus_color = genus_color_map.get(genus, "gray") if genus_color_map else "gray"
-            # print(f'{genus_color=}')
-            genus_bar = create_genus_cluster_bar_face(
-                cluster_count=leaf.number_of_clusters_per_genus_uniq,
-                max_cluster_count=max_genus_cluster_count,
-                max_width=500 * annotation_size,
-                height=annotation_size,
-                color=genus_color
-            )
-            leaf.add_face(genus_bar, column=barplot_column + 2, position="aligned")
+        leaf.add_face(bar_face, column=8, position="aligned")
 
     # === Internal node coloring ===
     for node in tree.traverse("postorder"):
