@@ -241,7 +241,7 @@ def create_subfamily_cluster_bar_face(cluster_count: int, max_cluster_count: int
 
 
 def create_genus_cluster_bar_face(cluster_count: int, max_cluster_count: int, max_width: int = 500,
-                                  height: int = 20, color=None) -> faces.ImgFace:
+                                  height: int = 20, color: str = "black") -> faces.ImgFace:
     """
     Create a horizontal black bar scaled by genus-level cluster count.
     :param cluster_count: Number of clusters for the genus
@@ -273,14 +273,14 @@ def build_genus_color_map(tree: Tree, fallback_colors: list) -> dict:
         if genus != "unknown" and genus not in genus_color_map:
             genus_color_map[genus] = fallback_colors[current_index % len(fallback_colors)]
             current_index += 1
+    print(f'{genus_color_map=}')
     return genus_color_map
 
 
 # === Main Leaf Annotation Function ===
 def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dict, max_total: int, show_labels: bool,
                          annotation_size: int, subfamily_summary: pd.DataFrame = None,
-                         genus_summary: pd.DataFrame = None, subfamily_color_map: dict = None,
-                         genus_color_map: dict = None):
+                         genus_summary: pd.DataFrame = None, subfamily_color_map: dict = None):
     subfamily_count_map = load_cluster_count_mapping(subfamily_summary, "subfamily",
                                                      "number_of_clusters_per_group_uniq") if subfamily_summary is not None else {}
     genus_count_map = load_cluster_count_mapping(genus_summary, "genus",
@@ -288,6 +288,9 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
 
     max_subfamily_cluster_count = max([v for v in subfamily_count_map.values()] + [1])  # avoid 0
     max_genus_cluster_count = max([v for v in genus_count_map.values()] + [1])  # avoid 0
+
+    genus_color_map = {}
+    current_index = 0
 
     for leaf in tree.iter_leaves():
         contig_id = extract_contig_id(leaf.name)
@@ -374,6 +377,7 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
         # 🔳 Add black horizontal bar for subfamily cluster count
         if subfamily != "unknown" and hasattr(leaf, "number_of_clusters_per_subfamily_uniq"):
             subfamily_color = SUBFAMILY_COLOR_MAP.get(subfamily, "gray")
+            # print(f'{subfamily_color=}')
 
             cluster_bar = create_subfamily_cluster_bar_face(
                 cluster_count=leaf.number_of_clusters_per_subfamily_uniq,
@@ -384,8 +388,14 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
             )
             leaf.add_face(cluster_bar, column=barplot_column + 1, position="aligned")
 
+        # 🔳 Add black horizontal bar for genus cluster count
         if genus != "unknown" and hasattr(leaf, "number_of_clusters_per_genus_uniq"):
+            if genus not in genus_color_map:
+                genus_color_map[genus] = GENUS_ALTERNATING_COLORS[current_index % len(GENUS_ALTERNATING_COLORS)]
+                current_index += 1
+
             genus_color = genus_color_map.get(genus, "gray") if genus_color_map else "gray"
+            # print(f'{genus_color=}')
             genus_bar = create_genus_cluster_bar_face(
                 cluster_count=leaf.number_of_clusters_per_genus_uniq,
                 max_cluster_count=max_genus_cluster_count,
@@ -417,27 +427,13 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
 
 
 # === Render Function ===
-def render_tree(tree: Tree, output_file_prefix: str, show_labels: bool = False, max_total: int = 1,
+def render_tree(tree_file: str, output_file_prefix: str, show_labels: bool = False, max_total: int = 1,
                 annotations: pd.DataFrame = None, genome_data: dict = None,
-                subfamily_color_map: dict = None):
+                subfamily_color_map: dict = None,
+                subfamily_summary: pd.DataFrame = None, genus_summary: pd.DataFrame = None):
+
     def build_tree_style(mode: str) -> TreeStyle:
         local_annotation_size = int(ANNOTATION_SIZE * 1) if mode == "c" else ANNOTATION_SIZE
-
-        genus_color_map = build_genus_color_map(tree, fallback_colors=GENUS_ALTERNATING_COLORS)
-
-        annotate_tree_leaves(
-            tree,
-            annotations,
-            genome_data,
-            max_total,
-            show_labels,
-            annotation_size=local_annotation_size,
-            subfamily_summary=subfamily_summary,
-            genus_summary=genus_summary,
-            subfamily_color_map=subfamily_color_map,
-            genus_color_map=genus_color_map
-        )
-
         ts = TreeStyle()
         ts.mode = mode
         ts.show_leaf_name = show_labels
@@ -454,6 +450,7 @@ def render_tree(tree: Tree, output_file_prefix: str, show_labels: bool = False, 
             ts.legend.add_face(block, column=0)
             ts.legend.add_face(text, column=1)
 
+        # === Legends ===
         add_section_title("Host Phyla")
         for label, color in [
             ("Bacteroidetes", BAR_COLORS['num_Bacteroidetes']),
@@ -469,12 +466,53 @@ def render_tree(tree: Tree, output_file_prefix: str, show_labels: bool = False, 
         for family, color in CRASSVIRALES_COLOR_SCHEME.items():
             add_color_text_entry(family, color)
 
+        add_section_title("Subfamilies")
+        if subfamily_color_map:
+            for subfam, color in subfamily_color_map.items():
+                add_color_text_entry(subfam, color)
+
         ts.legend_position = 1
         return ts
 
-    tree.render(f"{output_file_prefix}_rectangular.svg", w=1800, units="px", tree_style=build_tree_style("r"))
-    tree.render(f"{output_file_prefix}_circular.svg", w=2500, units="px", tree_style=build_tree_style("c"))
+    # === Annotate and Render Rectangular Tree ===
+    tree_rect = Tree(tree_file, format=1)
 
+    # genus_color_map_rect = build_genus_color_map(tree_rect, fallback_colors=GENUS_ALTERNATING_COLORS)
+    #
+    # print(genus_color_map_rect)
+
+    annotate_tree_leaves(
+        tree_rect,
+        annotations,
+        genome_data,
+        max_total,
+        show_labels,
+        annotation_size=ANNOTATION_SIZE,
+        subfamily_summary=subfamily_summary,
+        genus_summary=genus_summary,
+        subfamily_color_map=subfamily_color_map
+#        genus_color_map=None
+    )
+
+    tree_rect.render(f"{output_file_prefix}_rectangular.svg", w=1800, units="px", tree_style=build_tree_style("r"))
+
+    # === Annotate and Render Circular Tree ===
+    tree_circ = Tree(tree_file, format=1)
+    # genus_color_map_circ = build_genus_color_map(tree_circ, fallback_colors=GENUS_ALTERNATING_COLORS)
+
+    annotate_tree_leaves(
+        tree_circ,
+        annotations,
+        genome_data,
+        max_total,
+        show_labels,
+        annotation_size=ANNOTATION_SIZE,
+        subfamily_summary=subfamily_summary,
+        genus_summary=genus_summary,
+        subfamily_color_map=subfamily_color_map
+#        genus_color_map=genus_color_map_circ
+    )
+    tree_circ.render(f"{output_file_prefix}_circular.svg", w=2500, units="px", tree_style=build_tree_style("c"))
 
 # === Main Entry Point ===
 if __name__ == "__main__":
@@ -491,7 +529,7 @@ if __name__ == "__main__":
     output_prefix = f"{output_dir}/annotated_tree"
 
     # === RUN ===
-    tree = Tree(tree_file, format=1)
+    # tree = Tree(tree_file, format=1)
     annotations = pd.read_csv(annotation_file, sep="\t")
     genome_data = load_host_composition_dict(barplot_tsv)
 
@@ -504,7 +542,15 @@ if __name__ == "__main__":
 
     print("✅ Family-level, subfamily-level, and genus-level summaries saved.")
 
-    render_tree(tree, output_prefix, show_labels=False, max_total=max_total,
-                annotations=annotations, genome_data=genome_data,
-                subfamily_color_map=SUBFAMILY_COLOR_MAP)
+    render_tree(
+        tree_file,
+        output_prefix,
+        show_labels=False,
+        max_total=max_total,
+        annotations=annotations,
+        genome_data=genome_data,
+        subfamily_color_map=SUBFAMILY_COLOR_MAP,
+        subfamily_summary=subfamily_summary,
+        genus_summary=genus_summary
+    )
     print(f"✅ Annotated tree saved to {output_prefix}")
