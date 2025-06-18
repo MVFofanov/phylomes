@@ -1,13 +1,11 @@
 import os
-from ete3 import Tree, TreeStyle, NodeStyle, TextFace, RectFace, faces
-import matplotlib
-import pandas as pd
 import tempfile
 from typing import Tuple
 
+import matplotlib
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
-import io
+import pandas as pd
+from ete3 import Tree, TreeStyle, NodeStyle, TextFace, RectFace, faces
 
 matplotlib.use('Agg')
 os.environ["QT_QPA_PLATFORM"] = "offscreen"  # Ensure Qt offscreen rendering
@@ -17,7 +15,6 @@ ANNOTATION_SIZE = 20
 BRANCH_THICKNESS = 4
 NODE_SIZE = 6
 
-
 # === Color Mappings ===
 CRASSVIRALES_COLOR_SCHEME = {
     "Intestiviridae": "#EE3B3B",
@@ -26,6 +23,22 @@ CRASSVIRALES_COLOR_SCHEME = {
     "Steigviridae": "#00CED1",
     "Epsilon": "#CD2990",
     "Zeta": "#006400"
+}
+
+SUBFAMILY_COLOR_MAP = {
+    'Coarsevirinae': '#1f77b4',
+    'Doltivirinae': '#aec7e8',
+    'Lumpivirinae': '#ff7f0e',
+    'Churivirinae': '#ffbb78',
+    'Crudevirinae': '#2ca02c',
+    'Obtuvirinae': '#98df8a',
+    'Asinivirinae': '#d62728',
+    'Bearivirinae': '#ff9896',
+    'Boorivirinae': '#9467bd',
+    'Loutivirinae': '#c5b0d5',
+    'Oafivirinae': '#8c564b',
+    'Uncouvirinae': '#c49c94',
+    'Grossvirinae': '#e377c2'
 }
 
 BACTERIAL_PHYLUM_COLORS = {
@@ -54,9 +67,11 @@ BAR_COLORS = {
     'num_unknown': 'gray'
 }
 
+
 # === Utility Functions ===
 def extract_contig_id(protein_name: str) -> str:
     return protein_name.split('|')[0]
+
 
 def load_host_composition_dict(tsv_path: str) -> dict:
     df = pd.read_csv(tsv_path, sep='\t')
@@ -68,7 +83,8 @@ def load_cluster_count_mapping(summary_df: pd.DataFrame, level: str, count_colum
     if level == "subfamily":
         return {(row['family_dani'], row['subfamily_dani']): row[count_column] for _, row in summary_df.iterrows()}
     elif level == "genus":
-        return {(row['family_dani'], row['subfamily_dani'], row['genus_dani']): row[count_column] for _, row in summary_df.iterrows()}
+        return {(row['family_dani'], row['subfamily_dani'], row['genus_dani']): row[count_column] for _, row in
+                summary_df.iterrows()}
     return {}
 
 
@@ -83,11 +99,11 @@ def calculate_cluster_summaries(barplot_path: str, out_prefix: str) -> Tuple[pd.
     def summarize(df_grouped):
         result = (
             df_grouped
-            .agg({
+                .agg({
                 "crassvirales_genome": lambda x: sorted(set(x)),
                 "cluster_name_uniq": lambda x: sum([parse_cluster_list(i) for i in x], [])
             })
-            .reset_index()
+                .reset_index()
         )
 
         # Basic stats
@@ -114,13 +130,13 @@ def calculate_cluster_summaries(barplot_path: str, out_prefix: str) -> Tuple[pd.
         return result
 
     # === Family-level
-    #family_df = df[df["family_dani"] != "unknown"]
+    # family_df = df[df["family_dani"] != "unknown"]
     family_df = df
     family_summary = summarize(family_df.groupby(["family_dani"]))
     family_summary.to_csv(f"{out_prefix}_family_summary.tsv", sep="\t", index=False)
 
     # === Subfamily-level
-    #subfamily_df = df[df["subfamily_dani"] != "unknown"]
+    # subfamily_df = df[df["subfamily_dani"] != "unknown"]
     subfamily_df = df
     subfamily_summary = summarize(subfamily_df.groupby(["family_dani", "subfamily_dani"]))
     subfamily_summary.to_csv(f"{out_prefix}_subfamily_summary.tsv", sep="\t", index=False)
@@ -137,8 +153,10 @@ def calculate_cluster_summaries(barplot_path: str, out_prefix: str) -> Tuple[pd.
 def empty_text_face(width=ANNOTATION_SIZE):
     return TextFace(" " * width, fsize=ANNOTATION_SIZE)
 
+
 def empty_face(width=ANNOTATION_SIZE, height=ANNOTATION_SIZE):
     return RectFace(width=width, height=height, fgcolor="white", bgcolor="white")
+
 
 def create_stacked_bar_face(values: list, colors: list, width: int = 100, height: int = 20) -> faces.ImgFace:
     """Create a stacked barplot saved to a temporary PNG file, then return as ImgFace."""
@@ -159,13 +177,14 @@ def create_stacked_bar_face(values: list, colors: list, width: int = 100, height
 
     # 🔧 Save to a temp file (ETE3 needs a path, not bytes)
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-    fig.savefig(tmp.name, format='png', bbox_inches='tight', pad_inches=0, transparent=True)
+    fig.savefig(tmp.name, format='png', bbox_inches='tight', pad_inches=0, transparent=False)
     plt.close(fig)
 
     return faces.ImgFace(tmp.name)
 
 
-def create_stacked_bar_face_scaled(values: list, colors: list, max_total: int, max_width: int = 100, height: int = 20) -> faces.ImgFace:
+def create_stacked_bar_face_scaled(values: list, colors: list, max_total: int, max_width: int = 100,
+                                   height: int = 20) -> faces.ImgFace:
     """
     Create a stacked barplot where total width is scaled to the number of proteins.
     :param values: list of protein counts per phylum
@@ -199,24 +218,28 @@ def create_stacked_bar_face_scaled(values: list, colors: list, max_total: int, m
 
     return faces.ImgFace(tmp.name)
 
-def create_cluster_bar_face(cluster_count: int, max_cluster_count: int, max_width: int = 500, height: int = 20) -> faces.ImgFace:
+
+def create_subfamily_cluster_bar_face(cluster_count: int, max_cluster_count: int, max_width: int = 500,
+                                      height: int = 20,
+                                      color: str = "black") -> faces.ImgFace:
     """Create a horizontal black bar scaled by cluster count."""
     width = int((cluster_count / max_cluster_count) * max_width)
     width = max(width, 1)  # prevent zero width
 
     fig, ax = plt.subplots(figsize=(width / 100, height / 100), dpi=100)
-    ax.barh(0, width=width, height=1, color="black")
+    ax.barh(0, width=width, height=1, color=color)
     ax.axis('off')
     plt.tight_layout(pad=0)
 
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-    fig.savefig(tmp.name, format='png', bbox_inches='tight', pad_inches=0, transparent=True)
+    fig.savefig(tmp.name, format='png', bbox_inches='tight', pad_inches=0, transparent=False)
     plt.close(fig)
 
     return faces.ImgFace(tmp.name)
 
 
-def create_genus_cluster_bar_face(cluster_count: int, max_cluster_count: int, max_width: int = 500, height: int = 20) -> faces.ImgFace:
+def create_genus_cluster_bar_face(cluster_count: int, max_cluster_count: int, max_width: int = 500,
+                                  height: int = 20) -> faces.ImgFace:
     """
     Create a horizontal black bar scaled by genus-level cluster count.
     :param cluster_count: Number of clusters for the genus
@@ -234,15 +257,16 @@ def create_genus_cluster_bar_face(cluster_count: int, max_cluster_count: int, ma
     plt.tight_layout(pad=0)
 
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-    fig.savefig(tmp.name, format='png', bbox_inches='tight', pad_inches=0, transparent=True)
+    fig.savefig(tmp.name, format='png', bbox_inches='tight', pad_inches=0, transparent=False)
     plt.close(fig)
 
     return faces.ImgFace(tmp.name)
 
+
 # === Main Leaf Annotation Function ===
 def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dict, max_total: int, show_labels: bool,
                          annotation_size: int, subfamily_summary: pd.DataFrame = None,
-                         genus_summary: pd.DataFrame = None):
+                         genus_summary: pd.DataFrame = None, subfamily_color_map: dict = None):
     subfamily_count_map = load_cluster_count_mapping(subfamily_summary, "subfamily",
                                                      "number_of_clusters_per_group_uniq") if subfamily_summary is not None else {}
     genus_count_map = load_cluster_count_mapping(genus_summary, "genus",
@@ -335,11 +359,14 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
 
         # 🔳 Add black horizontal bar for subfamily cluster count
         if subfamily != "unknown" and hasattr(leaf, "number_of_clusters_per_subfamily_uniq"):
-            cluster_bar = create_cluster_bar_face(
+            subfamily_color = SUBFAMILY_COLOR_MAP.get(subfamily, "gray")
+
+            cluster_bar = create_subfamily_cluster_bar_face(
                 cluster_count=leaf.number_of_clusters_per_subfamily_uniq,
                 max_cluster_count=max_subfamily_cluster_count,
                 max_width=500 * annotation_size,
-                height=annotation_size
+                height=annotation_size,
+                color=subfamily_color
             )
             leaf.add_face(cluster_bar, column=barplot_column + 1, position="aligned")
 
@@ -375,11 +402,12 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
 
 
 # === Render Function ===
-def render_tree(tree: Tree, output_file_prefix: str, show_labels: bool = False, max_total: int = 1, annotations: pd.DataFrame = None, genome_data: dict = None):
+def render_tree(tree: Tree, output_file_prefix: str, show_labels: bool = False, max_total: int = 1,
+                annotations: pd.DataFrame = None, genome_data: dict = None,
+                subfamily_color_map: dict = None):
     def build_tree_style(mode: str) -> TreeStyle:
         local_annotation_size = int(ANNOTATION_SIZE * 1) if mode == "c" else ANNOTATION_SIZE
 
-        #annotate_tree_leaves(tree, annotations, genome_data, max_total, show_labels, annotation_size=local_annotation_size)
         annotate_tree_leaves(
             tree,
             annotations,
@@ -388,9 +416,9 @@ def render_tree(tree: Tree, output_file_prefix: str, show_labels: bool = False, 
             show_labels,
             annotation_size=local_annotation_size,
             subfamily_summary=subfamily_summary,
-            genus_summary=genus_summary
+            genus_summary=genus_summary,
+            subfamily_color_map=subfamily_color_map
         )
-
 
         ts = TreeStyle()
         ts.mode = mode
@@ -437,11 +465,11 @@ if __name__ == "__main__":
     terl_tree_dir = "/mnt/c/crassvirales/phylomes/TerL_tree"
     tree_file = f"{terl_tree_dir}/terL_sequences_trimmed_merged_10gaps.treefile"
     annotation_file = "/mnt/c/crassvirales/phylomes/supplementary_tables/phylome_taxonomy_s1.txt"
-    barplot_tsv = os.path.join(base_dir, "90", "genomes_crassvirales_threshold_90_with_ratio_phylum_to_Bacteroidetes_annotated.tsv")
+    barplot_tsv = os.path.join(base_dir, "90",
+                               "genomes_crassvirales_threshold_90_with_ratio_phylum_to_Bacteroidetes_annotated.tsv")
 
     output_dir = os.path.join(base_dir, "TerL_tree")
     os.makedirs(output_dir, exist_ok=True)
-    #output_svg = f"{output_dir}/annotated_tree.svg"
     output_prefix = f"{output_dir}/annotated_tree"
 
     # === RUN ===
@@ -449,24 +477,16 @@ if __name__ == "__main__":
     annotations = pd.read_csv(annotation_file, sep="\t")
     genome_data = load_host_composition_dict(barplot_tsv)
 
-    #show_labels = False  # or True, depending on your needs
+    # show_labels = False  # or True, depending on your needs
 
     max_total = max(sum(row.get(k, 0) for k in BAR_KEYS) for row in genome_data.values())
-
-    # annotate_tree_leaves(tree, annotations, genome_data, show_labels=False) # show annotation text line or not
-    # annotate_tree_leaves(tree, annotations, genome_data, max_total, show_labels=False)
-    # render_tree(tree, output_prefix, show_labels=False) # show gene leave labels or not
-
-    # === NEW: Calculate and save cluster summary per subfamily ===
-    # cluster_summary_output = os.path.join(output_dir, "subfamily_cluster_summary.tsv")
-    # cluster_summary_df = calculate_clusters_per_subfamily(barplot_tsv, cluster_summary_output)
-    # print(f"✅ Subfamily cluster summary saved to {cluster_summary_output}")
 
     cluster_summary_prefix = os.path.join(output_dir, "cluster_summary")
     family_summary, subfamily_summary, genus_summary = calculate_cluster_summaries(barplot_tsv, cluster_summary_prefix)
 
     print("✅ Family-level, subfamily-level, and genus-level summaries saved.")
 
-    render_tree(tree, output_prefix, show_labels=False, max_total=max_total, annotations=annotations,
-                genome_data=genome_data)
+    render_tree(tree, output_prefix, show_labels=False, max_total=max_total,
+                annotations=annotations, genome_data=genome_data,
+                subfamily_color_map=SUBFAMILY_COLOR_MAP)
     print(f"✅ Annotated tree saved to {output_prefix}")
