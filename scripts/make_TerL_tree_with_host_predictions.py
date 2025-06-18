@@ -225,6 +225,8 @@ def create_subfamily_cluster_bar_face(cluster_count: int, max_cluster_count: int
                                       height: int = 20,
                                       color: str = "black") -> faces.ImgFace:
     """Create a horizontal black bar scaled by cluster count."""
+    # max_width = min(max_width, 3000)
+
     width = int((cluster_count / max_cluster_count) * max_width)
     width = max(width, 1)  # prevent zero width
 
@@ -420,8 +422,14 @@ def render_tree(tree_file: str, output_file_prefix: str, show_labels: bool = Fal
                 subfamily_summary: pd.DataFrame = None, genus_summary: pd.DataFrame = None):
 
     def build_tree_style(mode: str) -> TreeStyle:
-        local_annotation_size = int(ANNOTATION_SIZE * 1) if mode == "c" else ANNOTATION_SIZE
         ts = TreeStyle()
+
+        if mode == "c":
+            # ts.circular_scale = 0.8  # try 0.7–0.9
+            local_annotation_size = int(ANNOTATION_SIZE * 3)
+        else:
+            local_annotation_size = ANNOTATION_SIZE
+
         ts.mode = mode
         ts.show_leaf_name = show_labels
         ts.show_branch_length = False
@@ -461,31 +469,33 @@ def render_tree(tree_file: str, output_file_prefix: str, show_labels: bool = Fal
         ts.legend_position = 1
         return ts
 
-    # === Annotate and Render Rectangular Tree ===
-    tree_rect = Tree(tree_file, format=1)
-
-    # genus_color_map_rect = build_genus_color_map(tree_rect, fallback_colors=GENUS_ALTERNATING_COLORS)
-    #
-    # print(genus_color_map_rect)
-
-    annotate_tree_leaves(
-        tree_rect,
-        annotations,
-        genome_data,
-        max_total,
-        show_labels,
-        annotation_size=ANNOTATION_SIZE,
-        subfamily_summary=subfamily_summary,
-        genus_summary=genus_summary,
-        subfamily_color_map=subfamily_color_map
-#        genus_color_map=None
-    )
-
-    tree_rect.render(f"{output_file_prefix}_rectangular.svg", w=1800, units="px", tree_style=build_tree_style("r"))
+#     # === Annotate and Render Rectangular Tree ===
+#     tree_rect = Tree(tree_file, format=1)
+#
+#     # genus_color_map_rect = build_genus_color_map(tree_rect, fallback_colors=GENUS_ALTERNATING_COLORS)
+#     #
+#     # print(genus_color_map_rect)
+#
+#     annotate_tree_leaves(
+#         tree_rect,
+#         annotations,
+#         genome_data,
+#         max_total,
+#         show_labels,
+#         annotation_size=ANNOTATION_SIZE,
+#         subfamily_summary=subfamily_summary,
+#         genus_summary=genus_summary,
+#         subfamily_color_map=subfamily_color_map
+# #        genus_color_map=None
+#     )
+#
+#     tree_rect.render(f"{output_file_prefix}_rectangular.svg", w=1800, units="px", tree_style=build_tree_style("r"))
 
     # === Annotate and Render Circular Tree ===
     tree_circ = Tree(tree_file, format=1)
     # genus_color_map_circ = build_genus_color_map(tree_circ, fallback_colors=GENUS_ALTERNATING_COLORS)
+
+    circ_annotation_size = int(ANNOTATION_SIZE * 3)  # tweak multiplier as needed
 
     annotate_tree_leaves(
         tree_circ,
@@ -493,7 +503,7 @@ def render_tree(tree_file: str, output_file_prefix: str, show_labels: bool = Fal
         genome_data,
         max_total,
         show_labels,
-        annotation_size=ANNOTATION_SIZE,
+        annotation_size=circ_annotation_size,
         subfamily_summary=subfamily_summary,
         genus_summary=genus_summary,
         subfamily_color_map=subfamily_color_map
