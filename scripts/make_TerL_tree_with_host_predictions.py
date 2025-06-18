@@ -41,6 +41,8 @@ SUBFAMILY_COLOR_MAP = {
     'Grossvirinae': '#e377c2'
 }
 
+GENUS_ALTERNATING_COLORS = ["#7F7FFF", "#FFB07F"]  # soft blue and peach-orange
+
 BACTERIAL_PHYLUM_COLORS = {
     'p__Actinobacteria': '#ffff99',
     'p__Actinomycetota': '#ffff99',
@@ -239,7 +241,7 @@ def create_subfamily_cluster_bar_face(cluster_count: int, max_cluster_count: int
 
 
 def create_genus_cluster_bar_face(cluster_count: int, max_cluster_count: int, max_width: int = 500,
-                                  height: int = 20) -> faces.ImgFace:
+                                  height: int = 20, color=None) -> faces.ImgFace:
     """
     Create a horizontal black bar scaled by genus-level cluster count.
     :param cluster_count: Number of clusters for the genus
@@ -252,7 +254,7 @@ def create_genus_cluster_bar_face(cluster_count: int, max_cluster_count: int, ma
     width = max(width, 1)  # prevent invisible bars
 
     fig, ax = plt.subplots(figsize=(width / 100, height / 100), dpi=100)
-    ax.barh(0, width=width, height=1, color="black")
+    ax.barh(0, width=width, height=1, color=color)
     ax.axis('off')
     plt.tight_layout(pad=0)
 
@@ -263,10 +265,22 @@ def create_genus_cluster_bar_face(cluster_count: int, max_cluster_count: int, ma
     return faces.ImgFace(tmp.name)
 
 
+def build_genus_color_map(tree: Tree, fallback_colors: list) -> dict:
+    genus_color_map = {}
+    current_index = 0
+    for leaf in tree.iter_leaves():
+        genus = getattr(leaf, "genus", "unknown")
+        if genus != "unknown" and genus not in genus_color_map:
+            genus_color_map[genus] = fallback_colors[current_index % len(fallback_colors)]
+            current_index += 1
+    return genus_color_map
+
+
 # === Main Leaf Annotation Function ===
 def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dict, max_total: int, show_labels: bool,
                          annotation_size: int, subfamily_summary: pd.DataFrame = None,
-                         genus_summary: pd.DataFrame = None, subfamily_color_map: dict = None):
+                         genus_summary: pd.DataFrame = None, subfamily_color_map: dict = None,
+                         genus_color_map: dict = None):
     subfamily_count_map = load_cluster_count_mapping(subfamily_summary, "subfamily",
                                                      "number_of_clusters_per_group_uniq") if subfamily_summary is not None else {}
     genus_count_map = load_cluster_count_mapping(genus_summary, "genus",
@@ -370,13 +384,14 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
             )
             leaf.add_face(cluster_bar, column=barplot_column + 1, position="aligned")
 
-        # 🔳 Add black horizontal bar for genus cluster count
         if genus != "unknown" and hasattr(leaf, "number_of_clusters_per_genus_uniq"):
+            genus_color = genus_color_map.get(genus, "gray") if genus_color_map else "gray"
             genus_bar = create_genus_cluster_bar_face(
                 cluster_count=leaf.number_of_clusters_per_genus_uniq,
                 max_cluster_count=max_genus_cluster_count,
                 max_width=500 * annotation_size,
-                height=annotation_size
+                height=annotation_size,
+                color=genus_color
             )
             leaf.add_face(genus_bar, column=barplot_column + 2, position="aligned")
 
@@ -408,6 +423,8 @@ def render_tree(tree: Tree, output_file_prefix: str, show_labels: bool = False, 
     def build_tree_style(mode: str) -> TreeStyle:
         local_annotation_size = int(ANNOTATION_SIZE * 1) if mode == "c" else ANNOTATION_SIZE
 
+        genus_color_map = build_genus_color_map(tree, fallback_colors=GENUS_ALTERNATING_COLORS)
+
         annotate_tree_leaves(
             tree,
             annotations,
@@ -417,7 +434,8 @@ def render_tree(tree: Tree, output_file_prefix: str, show_labels: bool = False, 
             annotation_size=local_annotation_size,
             subfamily_summary=subfamily_summary,
             genus_summary=genus_summary,
-            subfamily_color_map=subfamily_color_map
+            subfamily_color_map=subfamily_color_map,
+            genus_color_map=genus_color_map
         )
 
         ts = TreeStyle()
