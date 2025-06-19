@@ -41,7 +41,8 @@ SUBFAMILY_COLOR_MAP = {
     'Grossvirinae': '#e377c2'
 }
 
-GENUS_ALTERNATING_COLORS = ["#7F7FFF", "#FFB07F"]  # soft blue and peach-orange
+# GENUS_ALTERNATING_COLORS = ["#7F7FFF", "#FFB07F"]  # soft blue and peach-orange
+GENUS_ALTERNATING_COLORS = ["#B22222", "#000080"]  # Fire Brick and Navy
 
 BACTERIAL_PHYLUM_COLORS = {
     'p__Actinobacteria': '#ffff99',
