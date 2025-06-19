@@ -13,7 +13,7 @@ def extract_seq_info_from_gff(gff_file: str) -> pd.DataFrame:
                 match_seqlen = re.search(r'seqlen=(\d+)', line)
 
                 if match_seqhdr and match_seqlen:
-                    contig_ids.append(match_seqhdr.group(1))
+                    contig_ids.append(match_seqhdr.group(1).split()[0])
                     lengths.append(int(match_seqlen.group(1)))
 
     df = pd.DataFrame({
