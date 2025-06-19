@@ -1,6 +1,6 @@
 import os
 import re
-from typing import List, Optional, Union
+from typing import Dict, List, Optional, Union
 
 from dna_features_viewer import GraphicFeature, GraphicRecord
 import matplotlib
@@ -159,29 +159,157 @@ def parse_gff_multigenome(gff_path: str) -> dict:
     return genome_features
 
 
-def plot_genomes_with_features(genome_features: dict, output_path: str = "genomic_map.png") -> None:
+def build_protein_annotation_lookup(protein_table: pd.DataFrame) -> Dict[str, Dict[int, Dict[str, str]]]:
+    """
+    Build a lookup dictionary for protein features based on the input table.
+    Returns:
+        Dict[str, Dict[int, Dict[str, str]]]: genome_id -> ordinal_index -> {protein_id, color}
+    """
+    BACTERIAL_PHYLUM_COLORS = {
+        'Actinobacteria': '#ffff99',
+        'Actinomycetota': '#ffff99',
+        'Bacillota': '#a6cee3',
+        'Bacteroidetes': '#ff7f00',
+        'Bacteroidota': '#ff7f00',
+        'Firmicutes': '#a6cee3',
+        'Firmicutes_A': '#a6cee3',
+        'Proteobacteria': '#b15928',
+        'Pseudomonadota': '#b15928',
+        'Uroviricota': '#cab2d6',
+        'Other': '#b2df8a',
+        'unknown': 'gray'
+    }
+
+    # Prepare the lookup structure
+    lookup = {}
+
+    for _, row in protein_table.iterrows():
+        protein_id = row["crassvirales_protein"]
+        genome_id = row["crassvirales_genome"]
+        phylum = row["predicted_host_phylum_ratio_method"]
+
+        # Extract ordinal number from crassvirales_protein name
+        try:
+            parts = protein_id.split('|')
+            if len(parts) != 3:
+                continue
+            ordinal = int(parts[2])
+        except (ValueError, IndexError):
+            continue
+
+        color = BACTERIAL_PHYLUM_COLORS.get(phylum, "gray")
+
+        if genome_id not in lookup:
+            lookup[genome_id] = {}
+
+        lookup[genome_id][ordinal] = {
+            "protein_id": protein_id,
+            "color": color
+        }
+
+    return lookup
+
+
+
+def parse_gff_multigenome_with_lookup(gff_path: str, protein_lookup: dict) -> dict:
+    """
+    Parses a multi-genome GFF file into a dictionary of genome_id → list of features.
+    Colors and IDs are assigned based on the provided protein lookup.
+
+    Parameters:
+    - gff_path: Path to the GFF file.
+    - protein_lookup: Dict of genome_id → ordinal_number → {protein_id, color}
+
+    Returns:
+    - genome_features: dict mapping genome ID → list of GraphicFeature
+    """
+    from dna_features_viewer import GraphicFeature
+
+    genome_features = {}
+    current_genome = None
+    protein_index = 0  # Reset per genome
+
+    with open(gff_path, 'r') as f:
+        for line in f:
+            if line.startswith("# Sequence Data:"):
+                match = re.search(r'seqhdr="([^"]+)"', line)
+                current_genome = match.group(1) if match else None
+                genome_features[current_genome] = []
+                protein_index = 0
+
+            elif not line.startswith("#") and line.strip():
+                parts = line.strip().split("\t")
+                if len(parts) >= 9 and parts[2] == "CDS":
+                    start = int(parts[3])
+                    end = int(parts[4])
+                    strand = 1 if parts[6] == "+" else -1
+
+                    protein_index += 1  # 1-based index
+                    color = "gray"
+                    label = None
+
+                    if current_genome in protein_lookup:
+                        protein_info = protein_lookup[current_genome].get(protein_index)
+                        if protein_info:
+                            color = protein_info["color"]
+                            label = None  # if you want to display text, set: protein_info["protein_id"]
+
+                    genome_features[current_genome].append(
+                        GraphicFeature(start=start, end=end, strand=strand, color=color, label=label)
+                    )
+    return genome_features
+
+
+def build_genome_metadata_map(metadata_table_path: str) -> Dict[str, str]:
+    """
+    Builds a mapping from crassvirales_genome → "genome | family | subfamily | genus"
+    """
+    df = pd.read_csv(metadata_table_path, sep="\t")
+    label_map = {}
+
+    for _, row in df.iterrows():
+        genome = row["crassvirales_genome"]
+        family = row.get("family_dani", "")
+        subfamily = row.get("subfamily_dani", "")
+        genus = row.get("genus_dani", "")
+        label = f"{genome} | {family} | {subfamily} | {genus}"
+        label_map[genome] = label
+
+    return label_map
+
+
+def plot_genomes_with_features(
+    genome_features: dict,
+    output_path: str = "genomic_map.png",
+    genome_order: Optional[List[str]] = None,
+    genome_labels: Optional[Dict[str, str]] = None
+) -> None:
     """
     Plots a linear map with stacked genomes and annotated CDS features.
+    Allows custom ordering of genomes.
     """
     records = []
-    y_margin = 0.2
     height_per_record = 1.5
 
-    for idx, (genome, features) in enumerate(genome_features.items()):
+    # Use custom genome order if provided, otherwise default order
+    genome_ids = genome_order if genome_order else list(genome_features.keys())
+
+    for genome in genome_ids:
+        features = genome_features.get(genome, [])
         record = GraphicRecord(
-            sequence_length=max(f.end for f in features) if features else 1,
+            sequence_length=max((f.end for f in features), default=1),
             features=features
         )
         records.append((genome, record))
 
-    fig, axs = plt.subplots(len(records), 1, figsize=(15, len(records)*height_per_record), sharex=False)
-
+    fig, axs = plt.subplots(len(records), 1, figsize=(15, len(records) * height_per_record), sharex=False)
     if len(records) == 1:
         axs = [axs]
 
     for ax, (genome, record) in zip(axs, records):
+        label = genome_labels.get(genome, genome) if genome_labels else genome
         record.plot(ax=ax)
-        ax.set_title(genome, loc='left', fontsize=10)
+        ax.set_title(label, loc='left', fontsize=10)
 
     plt.tight_layout()
 
@@ -189,10 +317,38 @@ def plot_genomes_with_features(genome_features: dict, output_path: str = "genomi
     plt.savefig(output_path, dpi=300)
     print(f"✅ Genomic map saved as PNG: {output_path}")
 
-    # Save SVG (same path but with .svg extension)
+    # Save SVG
     svg_output_path = os.path.splitext(output_path)[0] + ".svg"
     plt.savefig(svg_output_path)
     print(f"✅ Genomic map also saved as SVG: {svg_output_path}")
+
+
+def load_ordered_representative_genomes(leaf_order_file: str, representative_genomes: List[str]) -> List[str]:
+    """
+    Loads an ordered list of crassvirales genome names from a leaf order file,
+    filtering only those present in the representative genome list.
+
+    Parameters:
+    - leaf_order_file: Path to the file containing leaf (protein) names.
+    - representative_genomes: List of representative crassvirales genome names.
+
+    Returns:
+    - A filtered list of genome names in the order they appear in the tree file.
+    """
+    ordered_genomes = []
+    seen = set()
+
+    with open(leaf_order_file, "r") as f:
+        for line in f:
+            line = line.strip()
+            if not line or "|" not in line:
+                continue
+            genome = line.split("|")[0]
+            if genome in representative_genomes and genome not in seen:
+                ordered_genomes.append(genome)
+                seen.add(genome)
+
+    return ordered_genomes
 
 
 if __name__ == "__main__":
@@ -220,6 +376,7 @@ if __name__ == "__main__":
     gff_annotation = "/mnt/c/crassvirales/Bas_phages_large/Bas_phages/2_Prodigal/3_final_annotation_formatted.gff"
     gff_annotation_representative = "/mnt/c/crassvirales/Bas_phages_large/Bas_phages/2_Prodigal/3_final_annotation_formatted_representative.gff"
     genomes_table = pd.read_csv(longest_genomes_output, sep="\t")
+    protein_table_path = f"{threshold_90_dir}/proteins_crassvirales_threshold_90_with_ratio_phylum_to_Bacteroidetes.tsv"
     representative_genomes = genomes_table["crassvirales_genome"].tolist()
 
     filter_gff_by_genomes(
@@ -228,6 +385,23 @@ if __name__ == "__main__":
         output_path=gff_annotation_representative
     )
 
-    genome_features = parse_gff_multigenome(gff_annotation_representative)
+    #genome_features = parse_gff_multigenome(gff_annotation_representative)
+
+    protein_table = pd.read_csv(protein_table_path, sep="\t")
+
+    protein_lookup = build_protein_annotation_lookup(protein_table)
+    genome_features = parse_gff_multigenome_with_lookup(gff_annotation_representative, protein_lookup)
+
     genomic_map_file = f"{TerL_dir}/representative_genomes_map.png"
-    plot_genomes_with_features(genome_features, output_path=genomic_map_file)
+    leaf_order_file = f"{TerL_dir}/annotated_tree_rectangular_leaf_order.txt"  # or your actual path
+    ordered_genomes = load_ordered_representative_genomes(leaf_order_file, representative_genomes)
+
+    genome_labels = build_genome_metadata_map(longest_genomes_output)
+
+    plot_genomes_with_features(
+        genome_features,
+        output_path=genomic_map_file,
+        genome_order=ordered_genomes,
+        genome_labels=genome_labels
+    )
+

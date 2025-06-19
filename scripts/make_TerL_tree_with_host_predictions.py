@@ -91,6 +91,12 @@ def load_cluster_count_mapping(summary_df: pd.DataFrame, level: str, count_colum
     return {}
 
 
+def save_leaf_order(tree: Tree, filepath: str) -> None:
+    with open(filepath, 'w') as f:
+        for leaf in tree.iter_leaves():
+            f.write(leaf.name + '\n')
+
+
 def calculate_cluster_summaries(barplot_path: str, out_prefix: str) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     df = pd.read_csv(barplot_path, sep="\t")
 
@@ -470,47 +476,51 @@ def render_tree(tree_file: str, output_file_prefix: str, show_labels: bool = Fal
         ts.legend_position = 1
         return ts
 
-#     # === Annotate and Render Rectangular Tree ===
-#     tree_rect = Tree(tree_file, format=1)
-#
-#     # genus_color_map_rect = build_genus_color_map(tree_rect, fallback_colors=GENUS_ALTERNATING_COLORS)
-#     #
-#     # print(genus_color_map_rect)
-#
-#     annotate_tree_leaves(
-#         tree_rect,
-#         annotations,
-#         genome_data,
-#         max_total,
-#         show_labels,
-#         annotation_size=ANNOTATION_SIZE,
-#         subfamily_summary=subfamily_summary,
-#         genus_summary=genus_summary,
-#         subfamily_color_map=subfamily_color_map
-# #        genus_color_map=None
-#     )
-#
-#     tree_rect.render(f"{output_file_prefix}_rectangular.svg", w=1800, units="px", tree_style=build_tree_style("r"))
+    # === Annotate and Render Rectangular Tree ===
+    tree_rect = Tree(tree_file, format=1)
 
-    # === Annotate and Render Circular Tree ===
-    tree_circ = Tree(tree_file, format=1)
-    # genus_color_map_circ = build_genus_color_map(tree_circ, fallback_colors=GENUS_ALTERNATING_COLORS)
-
-    circ_annotation_size = int(ANNOTATION_SIZE * 3)  # tweak multiplier as needed
+    # genus_color_map_rect = build_genus_color_map(tree_rect, fallback_colors=GENUS_ALTERNATING_COLORS)
+    #
+    # print(genus_color_map_rect)
 
     annotate_tree_leaves(
-        tree_circ,
+        tree_rect,
         annotations,
         genome_data,
         max_total,
         show_labels,
-        annotation_size=circ_annotation_size,
+        annotation_size=ANNOTATION_SIZE,
         subfamily_summary=subfamily_summary,
         genus_summary=genus_summary,
         subfamily_color_map=subfamily_color_map
-#        genus_color_map=genus_color_map_circ
+#        genus_color_map=None
     )
-    tree_circ.render(f"{output_file_prefix}_circular.svg", w=2500, units="px", tree_style=build_tree_style("c"))
+
+    # ✅ Save leaf order
+    save_leaf_order(tree_rect, f"{output_file_prefix}_rectangular_leaf_order.txt")
+
+    tree_rect.render(f"{output_file_prefix}_rectangular.svg", w=1800, units="px", tree_style=build_tree_style("r"))
+
+#     # === Annotate and Render Circular Tree ===
+#     tree_circ = Tree(tree_file, format=1)
+#     # genus_color_map_circ = build_genus_color_map(tree_circ, fallback_colors=GENUS_ALTERNATING_COLORS)
+#
+#     circ_annotation_size = int(ANNOTATION_SIZE * 3)  # tweak multiplier as needed
+#
+#     annotate_tree_leaves(
+#         tree_circ,
+#         annotations,
+#         genome_data,
+#         max_total,
+#         show_labels,
+#         annotation_size=circ_annotation_size,
+#         subfamily_summary=subfamily_summary,
+#         genus_summary=genus_summary,
+#         subfamily_color_map=subfamily_color_map
+# #        genus_color_map=genus_color_map_circ
+#     )
+#     tree_circ.render(f"{output_file_prefix}_circular.svg", w=2500, units="px", tree_style=build_tree_style("c"))
+
 
 # === Main Entry Point ===
 if __name__ == "__main__":
