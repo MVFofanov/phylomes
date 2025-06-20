@@ -76,6 +76,24 @@ def get_longest_genomes_per_genus(
     print(f"✅ Longest genome per genus saved to {output_table_path}")
 
 
+def get_longest_genomes_per_group(
+    input_table_path: str,
+    output_table_path: str,
+    group_column: str,
+    genome_column: str = "crassvirales_genome",
+    length_column: str = "length"
+) -> None:
+    """
+    Extracts the longest genome per group (genus, subfamily, or family).
+    """
+    df = pd.read_csv(input_table_path, sep="\t")
+    df_clean = df.dropna(subset=[group_column, length_column])
+    idx_longest = df_clean.groupby(group_column)[length_column].idxmax()
+    df_longest = df.loc[idx_longest].reset_index(drop=True)
+    df_longest.to_csv(output_table_path, sep="\t", index=False)
+    print(f"✅ Longest genome per {group_column} saved to {output_table_path}")
+
+
 def filter_gff_by_genomes(
     gff_path: str,
     genome_list: List[str],
@@ -355,53 +373,61 @@ if __name__ == "__main__":
     threshold_90_dir = "/mnt/c/crassvirales/phylomes/tree_analysis/results_with_prophages/cluster_analysis/unrooted/host_prediction_with_ratio_phylum_to_Bacteroidetes/90"
     TerL_dir = '/mnt/c/crassvirales/phylomes/tree_analysis/results_with_prophages/cluster_analysis/unrooted/host_prediction_with_ratio_phylum_to_Bacteroidetes/TerL_tree'
 
+    # Input files
     genome_length_table = f"{TerL_dir}/crassvirales_genome_lengths.tsv"
-    genomes_table = f"{threshold_90_dir}/genomes_crassvirales_threshold_90_with_ratio_phylum_to_Bacteroidetes_annotated.tsv"
-    genomes_table_with_lengths = f"{threshold_90_dir}/genomes_crassvirales_threshold_90_with_ratio_phylum_to_Bacteroidetes_annotated_with_lengths.tsv"
-
-    longest_genomes_output = f"{threshold_90_dir}/longest_genome_per_genus.tsv"
-
-    add_genome_lengths(genomes_table,
-                       genome_length_table,
-                       genomes_table_with_lengths)
-
-    longest_genomes_output = f"{threshold_90_dir}/longest_genome_per_genus.tsv"
-
-    get_longest_genomes_per_genus(
-        input_table_path=genomes_table_with_lengths,
-        output_table_path=longest_genomes_output
-    )
-
-
+    full_annotation_table = f"{threshold_90_dir}/genomes_crassvirales_threshold_90_with_ratio_phylum_to_Bacteroidetes_annotated.tsv"
     gff_annotation = "/mnt/c/crassvirales/Bas_phages_large/Bas_phages/2_Prodigal/3_final_annotation_formatted.gff"
-    gff_annotation_representative = "/mnt/c/crassvirales/Bas_phages_large/Bas_phages/2_Prodigal/3_final_annotation_formatted_representative.gff"
-    genomes_table = pd.read_csv(longest_genomes_output, sep="\t")
     protein_table_path = f"{threshold_90_dir}/proteins_crassvirales_threshold_90_with_ratio_phylum_to_Bacteroidetes.tsv"
-    representative_genomes = genomes_table["crassvirales_genome"].tolist()
 
-    filter_gff_by_genomes(
-        gff_path=gff_annotation,
-        genome_list=representative_genomes,
-        output_path=gff_annotation_representative
-    )
+    # Add genome lengths to annotation table
+    genomes_table_with_lengths = f"{threshold_90_dir}/genomes_crassvirales_threshold_90_with_ratio_phylum_to_Bacteroidetes_annotated_with_lengths.tsv"
+    add_genome_lengths(full_annotation_table, genome_length_table, genomes_table_with_lengths)
 
-    #genome_features = parse_gff_multigenome(gff_annotation_representative)
-
+    # Load protein annotation table
     protein_table = pd.read_csv(protein_table_path, sep="\t")
 
-    protein_lookup = build_protein_annotation_lookup(protein_table)
-    genome_features = parse_gff_multigenome_with_lookup(gff_annotation_representative, protein_lookup)
+    # Loop over taxonomic levels
+    for level in ["family_dani", "subfamily_dani", "genus_dani"]:
+        level_tag = level.replace("_dani", "")  # e.g. "family", "subfamily", "genus"
 
-    genomic_map_file = f"{TerL_dir}/representative_genomes_map.png"
-    leaf_order_file = f"{TerL_dir}/annotated_tree_rectangular_leaf_order.txt"  # or your actual path
-    ordered_genomes = load_ordered_representative_genomes(leaf_order_file, representative_genomes)
+        # Output paths
+        out_tsv = f"{threshold_90_dir}/longest_genome_per_{level_tag}.tsv"
+        gff_output = gff_annotation.replace(".gff", f"_representative_{level_tag}.gff")
+        map_output = f"{TerL_dir}/representative_genomes_map_{level_tag}.png"
 
-    genome_labels = build_genome_metadata_map(longest_genomes_output)
+        print(f"\n📌 Processing longest genomes per {level_tag}\n")
 
-    plot_genomes_with_features(
-        genome_features,
-        output_path=genomic_map_file,
-        genome_order=ordered_genomes,
-        genome_labels=genome_labels
-    )
+        # Get longest genome per group
+        get_longest_genomes_per_group(
+            input_table_path=genomes_table_with_lengths,
+            output_table_path=out_tsv,
+            group_column=level
+        )
+
+        # Load representative genomes and labels
+        genomes_table = pd.read_csv(out_tsv, sep="\t")
+        representative_genomes = genomes_table["crassvirales_genome"].tolist()
+        genome_labels = build_genome_metadata_map(out_tsv)
+
+        # Filter GFF to representative genomes
+        filter_gff_by_genomes(
+            gff_path=gff_annotation,
+            genome_list=representative_genomes,
+            output_path=gff_output
+        )
+
+        # Build colored protein lookup
+        protein_lookup = build_protein_annotation_lookup(protein_table)
+        genome_features = parse_gff_multigenome_with_lookup(gff_output, protein_lookup)
+
+        leaf_order_file = f"{TerL_dir}/annotated_tree_rectangular_leaf_order.txt"
+        genome_order = load_ordered_representative_genomes(leaf_order_file, representative_genomes)
+
+        # Plot genomic map
+        plot_genomes_with_features(
+            genome_features,
+            output_path=map_output,
+            genome_order=genome_order,
+            genome_labels=genome_labels
+        )
 
