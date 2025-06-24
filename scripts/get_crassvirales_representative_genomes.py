@@ -555,6 +555,111 @@ def parse_gff_multigenome_with_function_labels(
     return genome_features
 
 
+def parse_gff_multigenome_with_function_labels_and_orientation(
+    gff_path: str,
+    protein_lookup: Dict[str, Dict[int, Dict[str, str]]],
+    function_label_map: Optional[Dict[str, str]] = None
+) -> (Dict[str, list], Dict[str, str]):
+    """
+    Parses a multi-genome GFF file and returns:
+    - genome_features: dict[genome_id] -> List[GraphicFeature]
+    - orientation_status: dict[genome_id] -> "forward" or "reverse"
+
+    If TerL gene is found and on the reverse strand, the whole genome is reversed.
+    """
+    genome_features = {}
+    orientation_status = {}
+
+    current_genome = None
+    protein_index = 0
+    current_features = []
+
+    with open(gff_path, 'r') as f:
+        for line in f:
+            if line.startswith("# Sequence Data:"):
+                if current_genome and current_features:
+                    genome_features[current_genome] = current_features
+                match = re.search(r'seqhdr="([^"]+)"', line)
+                current_genome = match.group(1) if match else None
+                current_features = []
+                protein_index = 0
+
+            elif not line.startswith("#") and line.strip():
+                parts = line.strip().split("\t")
+                if len(parts) >= 9 and parts[2] == "CDS":
+                    start = int(parts[3])
+                    end = int(parts[4])
+                    strand = 1 if parts[6] == "+" else -1
+
+                    protein_index += 1
+                    color = "gray"
+                    label = None
+                    protein_id = None
+
+                    if current_genome in protein_lookup:
+                        protein_info = protein_lookup[current_genome].get(protein_index)
+                        if protein_info:
+                            color = protein_info["color"]
+                            protein_id = protein_info["protein_id"]
+
+                            if function_label_map:
+                                label = function_label_map.get(protein_id)
+
+                    current_features.append(
+                        GraphicFeature(start=start, end=end, strand=strand, color=color, label=label)
+                    )
+
+        if current_genome and current_features:
+            genome_features[current_genome] = current_features
+
+    # Determine orientation from TerL
+    for genome, features in genome_features.items():
+        features_with_index = list(enumerate(features))
+        terl_indices = [i for i, feat in features_with_index if feat.label == "TerL"]
+
+        if terl_indices:
+            terl_feature = features[terl_indices[0]]  # only use first TerL
+            if terl_feature.strand == 1:
+                orientation_status[genome] = "forward"
+            else:
+                orientation_status[genome] = "reverse"
+                max_end = max(f.end for f in features)
+                flipped = [
+                    GraphicFeature(
+                        start=max_end - f.end,
+                        end=max_end - f.start,
+                        strand=-f.strand,
+                        color=f.color,
+                        label=f.label
+                    ) for f in reversed(features)
+                ]
+                genome_features[genome] = flipped
+        else:
+            orientation_status[genome] = "forward"
+
+    return genome_features, orientation_status
+
+def build_genome_metadata_map_with_orientation(
+    metadata_table_path: str,
+    orientation_dict: Dict[str, str]
+) -> Dict[str, str]:
+    import pandas as pd
+    df = pd.read_csv(metadata_table_path, sep="\t")
+    label_map = {}
+
+    for _, row in df.iterrows():
+        genome = row["crassvirales_genome"]
+        family = row.get("family_dani", "")
+        subfamily = row.get("subfamily_dani", "")
+        genus = row.get("genus_dani", "")
+        orientation = orientation_dict.get(genome, "forward")
+        label = f"{genome} | {family} | {subfamily} | {genus} | {orientation}"
+        label_map[genome] = label
+
+    return label_map
+
+
+
 
 if __name__ == "__main__":
     threshold_90_dir = "/mnt/c/crassvirales/phylomes/tree_analysis/results_with_prophages/cluster_analysis/unrooted/host_prediction_with_ratio_phylum_to_Bacteroidetes/90"
@@ -596,7 +701,7 @@ if __name__ == "__main__":
         # Load representative genomes and labels
         genomes_table = pd.read_csv(out_tsv, sep="\t")
         representative_genomes = genomes_table["crassvirales_genome"].tolist()
-        genome_labels = build_genome_metadata_map(out_tsv)
+        # genome_labels = build_genome_metadata_map(out_tsv)
 
         # Filter GFF to representative genomes
         filter_gff_by_genomes(
@@ -618,11 +723,19 @@ if __name__ == "__main__":
 
         function_label_map = build_function_label_lookup(yutin_annotation)
 
-        genome_features = parse_gff_multigenome_with_function_labels(
+        # genome_features = parse_gff_multigenome_with_function_labels(
+        #     gff_output,
+        #     protein_lookup,
+        #     function_label_map=function_label_map
+        # )
+
+        genome_features, orientation_status = parse_gff_multigenome_with_function_labels_and_orientation(
             gff_output,
             protein_lookup,
             function_label_map=function_label_map
         )
+
+        genome_labels = build_genome_metadata_map_with_orientation(out_tsv, orientation_status)
 
         # genome_features = parse_gff_multigenome_with_terl_highlight(gff_output, protein_lookup, terl_label_lookup, log_path=log_file)
 
