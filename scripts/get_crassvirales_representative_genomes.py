@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 from typing import Dict, List, Optional, Union
@@ -9,6 +10,12 @@ import pandas as pd
 
 matplotlib.use('Agg')
 os.environ["QT_QPA_PLATFORM"] = "offscreen"  # Ensure Qt offscreen rendering
+
+ALLOWED_FUNCTION_LABELS = {
+    "gene86", "PDDEXK_a", "TerL", "portal", "gene77", "MCP", "gene75",
+    "gene74", "gene73", "IHF_54", "IHF_53", "Ttub", "Tstab", "gene49",
+    "primase", "SNF2", "PolB", "PolA", "SF1", "PDDEXK_b", "ATP_43b", "DnaB helicase"
+}
 
 def add_genome_lengths(
     annotation_table_path: str,
@@ -369,6 +376,186 @@ def load_ordered_representative_genomes(leaf_order_file: str, representative_gen
     return ordered_genomes
 
 
+def build_terl_gene_label_lookup(leaf_order_file: str) -> Dict[str, str]:
+    lookup = {}
+    with open(leaf_order_file, "r") as f:
+        for line in f:
+            line = line.strip().rstrip('_intein')
+            if not line or "|" not in line:
+                continue
+            genome = line.split("|")[0]
+            protein_id = line
+            if genome not in lookup:
+                lookup[genome] = protein_id
+    # print(f'TerL_{lookup=}')
+    return lookup
+
+
+def parse_gff_multigenome_with_terl_highlight(
+    gff_path: str,
+    protein_lookup: dict,
+    terl_label_lookup: Optional[Dict[str, str]] = None,
+    log_path: str = "terl_debug.log"
+) -> dict:
+    from dna_features_viewer import GraphicFeature
+
+    # Setup logging
+    logging.basicConfig(
+        filename=log_path,
+        level=logging.DEBUG,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        filemode="w"  # overwrite each time
+    )
+    console = logging.StreamHandler()
+    console.setLevel(logging.INFO)
+    logging.getLogger().addHandler(console)
+
+    genome_features = {}
+    current_genome = None
+    protein_index = 0
+
+    terl_matched = set()
+    terl_failed = set()
+
+    with open(gff_path, 'r') as f:
+        for line in f:
+            if line.startswith("# Sequence Data:"):
+                match = re.search(r'seqhdr="([^"]+)"', line)
+                current_genome = match.group(1) if match else None
+                genome_features[current_genome] = []
+                protein_index = 0
+
+            elif not line.startswith("#") and line.strip():
+                parts = line.strip().split("\t")
+                if len(parts) >= 9 and parts[2] == "CDS":
+                    start = int(parts[3])
+                    end = int(parts[4])
+                    strand = 1 if parts[6] == "+" else -1
+
+                    protein_index += 1
+                    color = "gray"
+                    label = None
+
+                    if current_genome in protein_lookup:
+                        protein_info = protein_lookup[current_genome].get(protein_index)
+                        if protein_info:
+                            color = protein_info["color"]
+                            protein_id = protein_info["protein_id"]
+                            if terl_label_lookup:
+                                expected_terl = terl_label_lookup.get(current_genome)
+                                if expected_terl == protein_id:
+                                    terl_matched.add(current_genome)
+                                    logging.info(f"✅ TerL label added: {current_genome} | {protein_id}")
+                                    label = "TerL"
+                                else:
+                                    terl_failed.add((current_genome, protein_id, expected_terl))
+
+                    genome_features[current_genome].append(
+                        GraphicFeature(start=start, end=end, strand=strand, color=color, label=label)
+                    )
+
+    # Summary
+    all_terl_genomes = set(terl_label_lookup.keys()) if terl_label_lookup else set()
+    unmatched = all_terl_genomes - terl_matched
+    logging.info(f"✔️  TerL label correctly added to {len(terl_matched)} genomes")
+    logging.warning(f"❌  TerL label missing in {len(unmatched)} genomes")
+
+    if unmatched:
+        logging.warning("Missing TerL label in these genomes:")
+        for genome in sorted(unmatched):
+            expected = terl_label_lookup.get(genome)
+            logging.warning(f"  - {genome}: expected {expected}")
+
+    if terl_failed:
+        logging.warning("⚠️  Mismatches between expected and actual protein IDs:")
+        for genome, actual_protein, expected_protein in sorted(terl_failed):
+            if genome not in terl_matched:
+                logging.warning(f"  - {genome}: GFF protein={actual_protein}, expected={expected_protein}")
+
+    logging.info(f"📝 TerL labeling log saved to {log_path}")
+    return genome_features
+
+
+def build_function_label_lookup(function_table_path: str) -> Dict[str, str]:
+    """
+    Builds a lookup from crassvirales_protein → function_label
+    Only keeps labels in the allowed function list.
+    """
+    df = pd.read_csv(function_table_path, sep="\t", header=None)
+    df.columns = ["protein_id", "function_code", "function_label", "annotation_status", "score"]
+
+    allowed = {
+        "gene86", "PDDEXK_a", "TerL", "portal", "gene77", "MCP", "gene75",
+        "gene74", "gene73", "IHF_54", "IHF_53", "Ttub", "Tstab", "gene49",
+        "primase", "SNF2", "PolB", "PolA", "SF1", "PDDEXK_b", "ATP_43b", "DnaB helicase"
+    }
+
+    lookup = {
+        row["protein_id"]: row["function_label"]
+        for _, row in df.iterrows()
+        if row["function_label"] in allowed
+    }
+    return lookup
+
+
+def parse_gff_multigenome_with_function_labels(
+    gff_path: str,
+    protein_lookup: dict,
+    function_label_map: Optional[Dict[str, str]] = None
+) -> dict:
+    """
+    Parses a multi-genome GFF file into a dictionary of genome_id → list of GraphicFeature.
+    Each CDS is colored based on host prediction (from protein_lookup) and labeled if function is known.
+
+    Parameters:
+    - gff_path: Path to the multi-genome GFF file.
+    - protein_lookup: dict[genome_id][ordinal] = {protein_id, color}
+    - function_label_map: dict[protein_id] = function label (optional)
+
+    Returns:
+    - dict[genome_id] → List[GraphicFeature]
+    """
+    genome_features = {}
+    current_genome = None
+    protein_index = 0
+
+    with open(gff_path, 'r') as f:
+        for line in f:
+            if line.startswith("# Sequence Data:"):
+                match = re.search(r'seqhdr="([^"]+)"', line)
+                current_genome = match.group(1) if match else None
+                genome_features[current_genome] = []
+                protein_index = 0
+
+            elif not line.startswith("#") and line.strip():
+                parts = line.strip().split("\t")
+                if len(parts) >= 9 and parts[2] == "CDS":
+                    start = int(parts[3])
+                    end = int(parts[4])
+                    strand = 1 if parts[6] == "+" else -1
+                    protein_index += 1
+
+                    color = "gray"
+                    label = None
+
+                    if current_genome in protein_lookup:
+                        protein_info = protein_lookup[current_genome].get(protein_index)
+                        if protein_info:
+                            color = protein_info["color"]
+                            protein_id = protein_info["protein_id"]
+
+                            # Assign function label if present
+                            if function_label_map:
+                                label = function_label_map.get(protein_id)
+
+                    genome_features[current_genome].append(
+                        GraphicFeature(start=start, end=end, strand=strand, color=color, label=label)
+                    )
+
+    return genome_features
+
+
+
 if __name__ == "__main__":
     threshold_90_dir = "/mnt/c/crassvirales/phylomes/tree_analysis/results_with_prophages/cluster_analysis/unrooted/host_prediction_with_ratio_phylum_to_Bacteroidetes/90"
     TerL_dir = '/mnt/c/crassvirales/phylomes/tree_analysis/results_with_prophages/cluster_analysis/unrooted/host_prediction_with_ratio_phylum_to_Bacteroidetes/TerL_tree'
@@ -382,6 +569,8 @@ if __name__ == "__main__":
     # Add genome lengths to annotation table
     genomes_table_with_lengths = f"{threshold_90_dir}/genomes_crassvirales_threshold_90_with_ratio_phylum_to_Bacteroidetes_annotated_with_lengths.tsv"
     add_genome_lengths(full_annotation_table, genome_length_table, genomes_table_with_lengths)
+
+    log_file = f"{TerL_dir}/genomic_map_logs_.txt"
 
     # Load protein annotation table
     protein_table = pd.read_csv(protein_table_path, sep="\t")
@@ -416,11 +605,28 @@ if __name__ == "__main__":
             output_path=gff_output
         )
 
+        leaf_order_file = f"{TerL_dir}/annotated_tree_rectangular_leaf_order.txt"
+
+        terl_label_lookup = build_terl_gene_label_lookup(leaf_order_file)
+
         # Build colored protein lookup
         protein_lookup = build_protein_annotation_lookup(protein_table)
-        genome_features = parse_gff_multigenome_with_lookup(gff_output, protein_lookup)
+        # genome_features = parse_gff_multigenome_with_lookup(gff_output, protein_lookup)
 
-        leaf_order_file = f"{TerL_dir}/annotated_tree_rectangular_leaf_order.txt"
+        annotation_dir = "/mnt/c/crassvirales/Bas_phages_large/Bas_phages/2_Function"
+        yutin_annotation = f'{annotation_dir}/parsed_yutin_all.txt'
+
+        function_label_map = build_function_label_lookup(yutin_annotation)
+
+        genome_features = parse_gff_multigenome_with_function_labels(
+            gff_output,
+            protein_lookup,
+            function_label_map=function_label_map
+        )
+
+        # genome_features = parse_gff_multigenome_with_terl_highlight(gff_output, protein_lookup, terl_label_lookup, log_path=log_file)
+
+
         genome_order = load_ordered_representative_genomes(leaf_order_file, representative_genomes)
 
         # Plot genomic map
