@@ -11,9 +11,10 @@ matplotlib.use('Agg')
 os.environ["QT_QPA_PLATFORM"] = "offscreen"  # Ensure Qt offscreen rendering
 
 # === Global Annotation Size Setting ===
-ANNOTATION_SIZE = 20
-BRANCH_THICKNESS = 4
-NODE_SIZE = 6
+ANNOTATION_SIZE = 10
+TREE_SCALE = 500
+BRANCH_THICKNESS = 10
+NODE_SIZE = 12
 
 # === Color Mappings ===
 CRASSVIRALES_COLOR_SCHEME = {
@@ -289,7 +290,9 @@ def build_genus_color_map(tree: Tree, fallback_colors: list) -> dict:
 # === Main Leaf Annotation Function ===
 def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dict, max_total: int, show_labels: bool,
                          annotation_size: int, subfamily_summary: pd.DataFrame = None,
-                         genus_summary: pd.DataFrame = None, subfamily_color_map: dict = None):
+                         genus_summary: pd.DataFrame = None, subfamily_color_map: dict = None,
+                         branch_thickness: int = BRANCH_THICKNESS, max_barplot_width: int = 500 * ANNOTATION_SIZE,
+                         color_branches: bool = False):
     subfamily_count_map = load_cluster_count_mapping(subfamily_summary, "subfamily",
                                                      "number_of_clusters_per_group_uniq") if subfamily_summary is not None else {}
     genus_count_map = load_cluster_count_mapping(genus_summary, "genus",
@@ -322,11 +325,17 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
             phylum_color = BACTERIAL_PHYLUM_COLORS.get(host_phylum)
 
             nstyle = NodeStyle()
-            nstyle["hz_line_color"] = family_color or "black"
-            nstyle["vt_line_color"] = family_color or "black"
-            nstyle["hz_line_width"] = BRANCH_THICKNESS
-            nstyle["vt_line_width"] = BRANCH_THICKNESS
-            nstyle["size"] = NODE_SIZE
+            if color_branches and family_color:
+                nstyle["hz_line_color"] = family_color
+                nstyle["vt_line_color"] = family_color
+            else:
+                nstyle["hz_line_color"] = "black"
+                nstyle["vt_line_color"] = "black"
+
+            nstyle["hz_line_width"] = branch_thickness
+            nstyle["vt_line_width"] = branch_thickness
+            # nstyle["size"] = NODE_SIZE
+            nstyle["size"] = 0
             leaf.set_style(nstyle)
 
         # Add feature fields
@@ -363,7 +372,7 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
             subfamily_bar_face = create_subfamily_cluster_bar_face(
                 cluster_count=leaf.number_of_clusters_per_subfamily_uniq,
                 max_cluster_count=max_subfamily_cluster_count,
-                max_width=500 * annotation_size,
+                max_width=max_barplot_width,
                 height=annotation_size,
                 color=subfamily_color
             )
@@ -376,7 +385,7 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
             genus_bar_face = create_genus_cluster_bar_face(
                 cluster_count=leaf.number_of_clusters_per_genus_uniq,
                 max_cluster_count=max_genus_cluster_count,
-                max_width=500 * annotation_size,
+                max_width=max_barplot_width,
                 height=annotation_size,
                 color=genus_color
             )
@@ -408,18 +417,22 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
 
         child_families = [child.family for child in node.children if
                           hasattr(child, "family") and child.family != "unknown"]
-        if child_families:
-            most_common = max(set(child_families), key=child_families.count)
-            node.add_features(family=most_common)
-            family_color = CRASSVIRALES_COLOR_SCHEME.get(most_common)
-            if family_color:
-                nstyle = NodeStyle()
-                nstyle["hz_line_color"] = family_color
-                nstyle["vt_line_color"] = family_color
-                nstyle["hz_line_width"] = 10
-                nstyle["vt_line_width"] = 10
-                nstyle["size"] = 0
-                node.set_style(nstyle)
+        most_common = max(set(child_families), key=child_families.count) if child_families else "unknown"
+        node.add_features(family=most_common)
+
+        if color_branches and most_common in CRASSVIRALES_COLOR_SCHEME:
+            branch_color = CRASSVIRALES_COLOR_SCHEME[most_common]
+        else:
+            branch_color = "black"
+
+        nstyle = NodeStyle()
+        nstyle["hz_line_color"] = branch_color
+        nstyle["vt_line_color"] = branch_color
+
+        nstyle["hz_line_width"] = branch_thickness
+        nstyle["vt_line_width"] = branch_thickness
+        nstyle["size"] = 0
+        node.set_style(nstyle)
 
 
 # === Render Function ===
@@ -430,13 +443,7 @@ def render_tree(tree_file: str, output_file_prefix: str, show_labels: bool = Fal
 
     def build_tree_style(mode: str) -> TreeStyle:
         ts = TreeStyle()
-
-        if mode == "c":
-            # ts.circular_scale = 0.8  # try 0.7–0.9
-            local_annotation_size = int(ANNOTATION_SIZE * 3)
-        else:
-            local_annotation_size = ANNOTATION_SIZE
-
+        local_annotation_size = int(ANNOTATION_SIZE * 3) if mode == "c" else ANNOTATION_SIZE
         ts.mode = mode
         ts.show_leaf_name = show_labels
         ts.show_branch_length = False
@@ -452,7 +459,6 @@ def render_tree(tree_file: str, output_file_prefix: str, show_labels: bool = Fal
             ts.legend.add_face(block, column=0)
             ts.legend.add_face(text, column=1)
 
-        # === Legends ===
         add_section_title("Host Phyla")
         for label, color in [
             ("Bacteroidetes", BAR_COLORS['num_Bacteroidetes']),
@@ -478,11 +484,6 @@ def render_tree(tree_file: str, output_file_prefix: str, show_labels: bool = Fal
 
     # === Annotate and Render Rectangular Tree ===
     tree_rect = Tree(tree_file, format=1)
-
-    # genus_color_map_rect = build_genus_color_map(tree_rect, fallback_colors=GENUS_ALTERNATING_COLORS)
-    #
-    # print(genus_color_map_rect)
-
     annotate_tree_leaves(
         tree_rect,
         annotations,
@@ -492,34 +493,59 @@ def render_tree(tree_file: str, output_file_prefix: str, show_labels: bool = Fal
         annotation_size=ANNOTATION_SIZE,
         subfamily_summary=subfamily_summary,
         genus_summary=genus_summary,
-        subfamily_color_map=subfamily_color_map
-#        genus_color_map=None
+        subfamily_color_map=subfamily_color_map,
+        branch_thickness=BRANCH_THICKNESS,
+        color_branches=False
     )
 
     # ✅ Save leaf order
     save_leaf_order(tree_rect, f"{output_file_prefix}_rectangular_leaf_order.txt")
 
-    tree_rect.render(f"{output_file_prefix}_rectangular.svg", w=1800, units="px", tree_style=build_tree_style("r"))
+    # 🔧 Use consistent max width
+    # max_render_width = 500 * ANNOTATION_SIZE
+    # tree_rect.render(f"{output_file_prefix}_rectangular.svg", w=max_render_width, units="px", tree_style=build_tree_style("r"))
 
-#     # === Annotate and Render Circular Tree ===
-#     tree_circ = Tree(tree_file, format=1)
-#     # genus_color_map_circ = build_genus_color_map(tree_circ, fallback_colors=GENUS_ALTERNATING_COLORS)
-#
-#     circ_annotation_size = int(ANNOTATION_SIZE * 3)  # tweak multiplier as needed
-#
-#     annotate_tree_leaves(
-#         tree_circ,
-#         annotations,
-#         genome_data,
-#         max_total,
-#         show_labels,
-#         annotation_size=circ_annotation_size,
-#         subfamily_summary=subfamily_summary,
-#         genus_summary=genus_summary,
-#         subfamily_color_map=subfamily_color_map
-# #        genus_color_map=genus_color_map_circ
-#     )
-#     tree_circ.render(f"{output_file_prefix}_circular.svg", w=2500, units="px", tree_style=build_tree_style("c"))
+    ts = build_tree_style("r")
+    ts.scale = TREE_SCALE  # default is 100 — increase spacing between nodes
+    tree_rect.render(f"{output_file_prefix}_rectangular.svg", tree_style=ts)
+
+    print("✅ Rectangular tree is saved.")
+
+
+    # === Annotate and Render Circular Tree ===
+    tree_circ = Tree(tree_file, format=1)
+    # genus_color_map_circ = build_genus_color_map(tree_circ, fallback_colors=GENUS_ALTERNATING_COLORS)
+
+    # circ_annotation_size = int(ANNOTATION_SIZE * 2)  # tweak multiplier as needed
+    circ_annotation_size = 16
+
+    circular_branch_thickness = BRANCH_THICKNESS * 2  # around 30
+
+    # max_barplot_width = 150
+    max_barplot_width = 120
+
+    annotate_tree_leaves(
+        tree_circ,
+        annotations,
+        genome_data,
+        max_total,
+        show_labels,
+        annotation_size=circ_annotation_size,
+        subfamily_summary=subfamily_summary,
+        genus_summary=genus_summary,
+        subfamily_color_map=subfamily_color_map,
+        branch_thickness=circular_branch_thickness,
+        max_barplot_width=max_barplot_width,
+        color_branches=False
+#        genus_color_map=genus_color_map_circ
+    )
+
+    ts_circ = build_tree_style("c")
+    # ts_circ.scale = 100  # ↓ lower = smaller tree radius (try 80–120)
+    ts_circ.scale = 60  # try 50–80 range
+    tree_circ.render(f"{output_file_prefix}_circular.svg", w=5000, units="px", tree_style=ts_circ)
+
+    print("✅ Circular tree is saved.")
 
 
 # === Main Entry Point ===
