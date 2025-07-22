@@ -439,7 +439,8 @@ def annotate_tree_leaves(tree: Tree, annotations: pd.DataFrame, genome_data: dic
 def render_tree(tree_file: str, output_file_prefix: str, show_labels: bool = False, max_total: int = 1,
                 annotations: pd.DataFrame = None, genome_data: dict = None,
                 subfamily_color_map: dict = None,
-                subfamily_summary: pd.DataFrame = None, genus_summary: pd.DataFrame = None):
+                subfamily_summary: pd.DataFrame = None, genus_summary: pd.DataFrame = None,
+                root_tree: bool = False, root_leaf: str = None):
 
     def build_tree_style(mode: str) -> TreeStyle:
         ts = TreeStyle()
@@ -484,6 +485,13 @@ def render_tree(tree_file: str, output_file_prefix: str, show_labels: bool = Fal
 
     # === Annotate and Render Rectangular Tree ===
     tree_rect = Tree(tree_file, format=1)
+    if root_tree and root_leaf:
+        try:
+            tree_rect.set_outgroup(tree_rect & root_leaf)
+            print(f"✅ Tree rooted at leaf: {root_leaf}")
+        except:
+            print(f"⚠️ Rooting failed. Leaf '{root_leaf}' not found in tree.")
+
     annotate_tree_leaves(
         tree_rect,
         annotations,
@@ -514,6 +522,13 @@ def render_tree(tree_file: str, output_file_prefix: str, show_labels: bool = Fal
 
     # === Annotate and Render Circular Tree ===
     tree_circ = Tree(tree_file, format=1)
+
+    if root_tree and root_leaf:
+        try:
+            tree_circ.set_outgroup(tree_circ & root_leaf)
+            print(f"✅ Tree rooted at leaf: {root_leaf}")
+        except:
+            print(f"⚠️ Rooting failed. Leaf '{root_leaf}' not found in tree.")
     # genus_color_map_circ = build_genus_color_map(tree_circ, fallback_colors=GENUS_ALTERNATING_COLORS)
 
     # circ_annotation_size = int(ANNOTATION_SIZE * 2)  # tweak multiplier as needed
@@ -585,6 +600,8 @@ if __name__ == "__main__":
         genome_data=genome_data,
         subfamily_color_map=SUBFAMILY_COLOR_MAP,
         subfamily_summary=subfamily_summary,
-        genus_summary=genus_summary
+        genus_summary=genus_summary,
+        root_tree=True,
+        root_leaf="KC821622.1|775|87"
     )
     print(f"✅ Annotated tree saved to {output_prefix}")
