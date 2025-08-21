@@ -31,6 +31,15 @@ class DefaultLayout:
         func_in = base / "4_ORF" / "3_functional_annot_tables"
         func_out = base / "4_ORF" / "3_functional_annot_table_renamed.tsv"
         return rename_table, func_in, func_out
+    
+    def resolve_marker_fasta(self, base: Path, marker: str) -> Tuple[Path, Path]:
+        """
+        Input:  5_phylogenies/0_marker_genes/1_final/{marker}.faa
+        Output: 5_phylogenies/0_marker_genes/1_final/{marker}_renamed.faa
+        """
+        in_faa = base / "5_phylogenies" / "0_marker_genes" / "1_final" / f"{marker}.faa"
+        out_faa = in_faa.with_name(f"{marker}_renamed.faa")
+        return in_faa, out_faa
 
 
 # =====================
@@ -284,6 +293,54 @@ def _rewrite_fasta_headers_text(text: str, new_id: str, old_id: str) -> str:
         out_lines.append(line)
     return "\n".join(out_lines) + ("\n" if text.endswith("\n") else "")
 
+def _rewrite_marker_faa_headers_text(text: str, rename_dict: Dict[str, str]) -> str:
+    """
+    Headers look like:
+      >new_id|{protein_length}|{gene_ordinal_number}
+    Replace only the first field (new_id) using rename_dict, preserve the rest.
+    """
+    out_lines: List[str] = []
+    for line in text.splitlines():
+        if line.startswith(">"):
+            # Split header at first whitespace; we only rename the identifier chunk
+            m = re.match(r"^(>)(\S+)(.*)$", line)
+            if m:
+                prefix, ident, rest = m.groups()
+                # ident is something like new_id|len|ord
+                parts = ident.split("|")
+                if parts:
+                    parts[0] = rename_dict.get(parts[0], parts[0])
+                    ident = "|".join(parts)
+                line = f"{prefix}{ident}{rest}"
+        out_lines.append(line)
+    return "\n".join(out_lines) + ("\n" if text.endswith("\n") else "")
+
+
+def rename_marker_proteins(base: Path, markers: Iterable[str], rename_dict: Dict[str, str]) -> None:
+    """
+    For each marker in markers:
+      Input : 5_phylogenies/0_marker_genes/1_final/{marker}.faa
+      Output: 5_phylogenies/0_marker_genes/1_final/{marker}_renamed.faa
+    Rewrite headers: {new_id}|len|ord  ->  {old_id}|len|ord
+    """
+    for marker in markers:
+        in_faa = base / "5_phylogenies" / "0_marker_genes" / "1_final" / f"{marker}.faa"
+        out_faa = in_faa.with_name(f"{marker}_renamed.faa")
+
+        if not in_faa.is_file():
+            print(f"[WARNING] Marker FASTA not found for '{marker}': {in_faa}")
+            continue
+
+        try:
+            text = in_faa.read_text()
+        except Exception as e:
+            print(f"[ERROR] Failed to read {in_faa}: {e}")
+            continue
+
+        new_text = _rewrite_marker_faa_headers_text(text, rename_dict)
+        ensure_parent_exists(out_faa)
+        out_faa.write_text(new_text)
+        print(f"[INFO] Renamed marker proteins → {out_faa}")
 
 def rename_all_codings(base: Path, rename_dict: Dict[str, str], rewrite_fasta_headers: bool = False) -> None:
     """
@@ -502,6 +559,9 @@ def main() -> None:
     
     if args.rename_best_coding:
         rename_best_coding(base, rename_dict, rewrite_fasta_headers=args.rewrite_fasta_headers)
+
+    # Rename marker protein FASTAs in 5_phylogenies/0_marker_genes/1_final
+    rename_marker_proteins(base, layout.markers, rename_dict)
 
 
 if __name__ == "__main__":
