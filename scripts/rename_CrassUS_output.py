@@ -316,6 +316,16 @@ def _rewrite_marker_faa_headers_text(text: str, rename_dict: Dict[str, str]) -> 
     return "\n".join(out_lines) + ("\n" if text.endswith("\n") else "")
 
 
+def _is_ignorable_aux_file(path: Path) -> bool:
+    # Add any aux files you want to silently ignore here
+    return path.name in {
+        ".snakemake_timestamp",
+        ".DS_Store",
+        "Thumbs.db",
+    } or path.name.startswith("._")
+
+
+
 def rename_marker_proteins(base: Path, markers: Iterable[str], rename_dict: Dict[str, str]) -> None:
     """
     For each marker in markers:
@@ -362,6 +372,11 @@ def rename_all_codings(base: Path, rename_dict: Dict[str, str], rewrite_fasta_he
     for path in sorted(in_dir.iterdir()):
         if not path.is_file():
             continue
+
+        # NEW: silently skip aux files (do not count as skipped)
+        if _is_ignorable_aux_file(path):
+            continue
+
         m = _parse_all_codings_filename(path)
         if not m:
             skipped += 1
@@ -411,6 +426,11 @@ def rename_best_coding(base: Path, rename_dict: Dict[str, str], rewrite_fasta_he
     for path in sorted(in_dir.iterdir()):
         if not path.is_file():
             continue
+
+        # NEW: silently skip aux files (e.g., .snakemake_timestamp)
+        if _is_ignorable_aux_file(path):
+            continue
+
         m = _parse_all_codings_filename(path)
         if not m:
             skipped += 1
